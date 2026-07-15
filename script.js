@@ -235,11 +235,11 @@ const state = {
   season: '',
 };
 const layerState = {
-  recruitment: true,
-  certificate: true,
-  aptitude: true,
-  resume: true,
-  personal: true,
+  recruitment: false,
+  certificate: false,
+  aptitude: false,
+  resume: false,
+  personal: false,
 };
 const customEvents = [];
 const customCompanyEvents = [];
@@ -636,10 +636,10 @@ function buildCompanyEvent(companyName, index, source = 'recommendation') {
   const offset = hashCode(companyName) % 16;
   const applicationStart = deadline;
   const applicationEnd = deadline;
-  const aptitudeEnd = addDays(applicationStart, -1 - (offset % 2));
-  const aptitudeStart = addDays(aptitudeEnd, -9 - (order % 3));
-  const resumeEnd = addDays(aptitudeStart, -1);
+  const resumeEnd = addDays(applicationStart, -1);
   const resumeStart = addDays(resumeEnd, -18 - (offset % 4));
+  const aptitudeStart = addDays(applicationStart, -2 - (offset % 3));
+  const aptitudeEnd = addDays(aptitudeStart, 9 + (order % 3));
 
   return {
     id: `company-${source}-${companyName}-${order}`.replace(/\s+/g, '-'),
@@ -705,7 +705,7 @@ function getCompanyEvents() {
       layer: 'recruitment',
       kind: '서류 마감',
       detail: `${event.companyName} 서류접수 기간입니다.`,
-      eventLabel: `${event.companyName} 서류 준비 기간`,
+      eventLabel: `${event.companyName} 서류 마감`,
       companyName: event.companyName,
       companySource: event.companySource,
     },
@@ -1513,6 +1513,9 @@ function addCompanySchedule(companyName) {
   if (!selectedCompanies.includes(companyName)) {
     selectedCompanies.unshift(companyName);
   }
+  layerState.recruitment = true;
+  layerState.aptitude = true;
+  layerState.resume = true;
   const monthDates = monthRange(today, targetSeasonDate());
   const deadlineMonthIndex = monthDates.findIndex(monthDate => {
     const deadline = addDays(targetSeasonDate(), -21);

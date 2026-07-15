@@ -722,17 +722,17 @@ aside{
   cursor:pointer;
 }
 
+.company-pill.brand{ background:#f8fbff; }
+.company-pill.global{ background:#f7fbff; }
+.company-pill.finance{ background:#f7fff9; }
+.company-pill.public{ background:#fffaf4; }
+
 .company-pill.selected{
   background:var(--accent-soft);
   color:var(--accent-strong);
   border-color:var(--accent);
   font-weight:700;
 }
-
-.company-pill.brand{ background:#f8fbff; }
-.company-pill.global{ background:#f7fbff; }
-.company-pill.finance{ background:#f7fff9; }
-.company-pill.public{ background:#fffaf4; }
 
 .company-search{
   display:grid;
