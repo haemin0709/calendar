@@ -251,7 +251,7 @@ let calendarViewIndex = 0;
 let calendarTransition = '';
 let activeMoreEventsDate = '';
 let activeCertificatePicker = null;
-let activeCertificateLibraryRank = null;
+let activeCertificateLibraryName = null;
 let toastTimer = null;
 let toastMessage = '';
 let activeCertificateGoalEditor = null;
@@ -404,6 +404,15 @@ function getCompanyDdayList() {
 
 function getAllCertificateRecommendations() {
   return Object.values(CERTIFICATE_RECOMMENDATIONS).flat();
+}
+
+function getUniqueCertificateList() {
+  const seen = new Set();
+  return getAllCertificateRecommendations().filter(cert => {
+    if (seen.has(cert.name)) return false;
+    seen.add(cert.name);
+    return true;
+  });
 }
 
 function getCertificateTargetPrepWeeks(cert) {
@@ -562,13 +571,13 @@ function getCertificateEvents() {
   ]));
 }
 
-function addCertificateSchedule(rank, round = 1) {
-  const cert = getCertificateRecommendations().find(item => String(item.rank) === String(rank));
+function addCertificateSchedule(certName, round = 1) {
+  const cert = findCertificateByName(certName);
   if (!cert) return;
   const selectedRound = getCertificateRoundOptions(cert).find(item => item.round === Number(round)) || getCertificateRoundOptions(cert)[0];
   const certEvents = [
     {
-      id: `cert-${Date.now()}-${rank}-${selectedRound.round}-prep`,
+      id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-prep`,
       title: `${cert.name} ${selectedRound.round}회차 준비`,
       start: selectedRound.prepStart,
       end: selectedRound.prepStart,
@@ -581,7 +590,7 @@ function addCertificateSchedule(rank, round = 1) {
       certRound: selectedRound.round,
     },
     {
-      id: `cert-${Date.now()}-${rank}-${selectedRound.round}-apply`,
+      id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-apply`,
       title: `${cert.name} ${selectedRound.round}회차 접수`,
       start: selectedRound.applicationStart,
       end: selectedRound.applicationStart,
@@ -594,7 +603,7 @@ function addCertificateSchedule(rank, round = 1) {
       certRound: selectedRound.round,
     },
     {
-      id: `cert-${Date.now()}-${rank}-${selectedRound.round}-exam`,
+      id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-exam`,
       title: `${cert.name} ${selectedRound.round}회차 시험`,
       start: selectedRound.examDate,
       end: selectedRound.examDate,
@@ -1176,24 +1185,24 @@ function renderCalendar() {
     location.hash = '#/';
   });
 
-  document.querySelectorAll('[data-cert]').forEach(button => {
+  document.querySelectorAll('[data-cert]:not([data-cert-round])').forEach(button => {
     button.addEventListener('click', () => {
-      const cert = getCertificateRecommendations().find(item => String(item.rank) === String(button.dataset.cert));
+      const cert = findCertificateByName(button.dataset.cert);
       if (!cert) return;
-      activeCertificatePicker = activeCertificatePicker?.rank === cert.rank ? null : cert.rank;
+      activeCertificatePicker = activeCertificatePicker === cert.name ? null : cert.name;
       renderCalendar();
     });
   });
 
-  document.querySelectorAll('[data-cert-library]').forEach(button => {
-    button.addEventListener('click', () => {
-      const cert = getCertificateRecommendations().find(item => String(item.rank) === String(button.dataset.certLibrary));
-      if (!cert) return;
-      activeCertificateLibraryRank = cert.rank;
-      activeCertificatePicker = cert.rank;
+  const certificateLibrarySelect = document.querySelector('#certificate-library-select');
+  if (certificateLibrarySelect) {
+    certificateLibrarySelect.addEventListener('change', event => {
+      const cert = findCertificateByName(event.target.value);
+      activeCertificateLibraryName = cert ? cert.name : null;
+      activeCertificatePicker = cert ? cert.name : null;
       renderCalendar();
     });
-  });
+  }
 
   document.querySelectorAll('[data-cert-round]').forEach(button => {
     button.addEventListener('click', () => {
@@ -1255,18 +1264,6 @@ function renderCalendar() {
       const company = input.value.trim();
       if (!company) return;
       addCompanySchedule(company);
-      input.value = '';
-    });
-  }
-
-  const certificateSearchForm = document.querySelector('#certificate-search-form');
-  if (certificateSearchForm) {
-    certificateSearchForm.addEventListener('submit', event => {
-      event.preventDefault();
-      const input = document.querySelector('#certificate-search-input');
-      const name = input.value.trim();
-      if (!name) return;
-      addCustomCertificate(name);
       input.value = '';
     });
   }
@@ -1353,25 +1350,21 @@ function renderCalendar() {
 
 function renderCertificatePlan() {
   const recommendations = getCertificateRecommendations();
-  const activeLibraryCert = recommendations.find(cert => String(cert.rank) === String(activeCertificateLibraryRank)) || null;
+  const allCertificates = getUniqueCertificateList();
+  const activeLibraryCert = allCertificates.find(cert => cert.name === activeCertificateLibraryName) || null;
 
   return `
     <div class="certificate-list">
-      <details class="certificate-library">
-        <summary>자격증 리스트 보기</summary>
-        <div class="certificate-library-list">
-          ${recommendations.map(cert => `
-            <button class="certificate-library-item ${activeLibraryCert?.rank === cert.rank ? 'active' : ''}" type="button" data-cert-library="${cert.rank}">
-              <strong>${escapeHtml(cert.name)}</strong>
-              <span>${escapeHtml(cert.rank)}순위</span>
-            </button>
-          `).join('')}
-        </div>
-      </details>
+      <select id="certificate-library-select" class="certificate-library-select">
+        <option value="">자격증을 선택하세요</option>
+        ${allCertificates.map(cert => `
+          <option value="${escapeHtml(cert.name)}" ${activeLibraryCert?.name === cert.name ? 'selected' : ''}>${escapeHtml(cert.name)} (${escapeHtml(cert.rank)}순위)</option>
+        `).join('')}
+      </select>
       ${activeLibraryCert ? `
         <div class="certificate-selected-preview">
           <p class="panel-label">선택한 자격증</p>
-          <div class="certificate-card preview-card ${activeCertificatePicker === activeLibraryCert.rank ? 'expanded' : ''}">
+          <div class="certificate-card preview-card ${activeCertificatePicker === activeLibraryCert.name ? 'expanded' : ''}">
             <div class="certificate-head">
               <span class="priority">${activeLibraryCert.rank}순위</span>
               <strong>${escapeHtml(activeLibraryCert.name)}</strong>
@@ -1379,19 +1372,15 @@ function renderCertificatePlan() {
             </div>
             <div class="certificate-body">
               <p>${escapeHtml(activeLibraryCert.description)}</p>
-              <button class="secondary-button" type="button" data-cert="${activeLibraryCert.rank}" aria-expanded="${activeCertificatePicker === activeLibraryCert.rank ? 'true' : 'false'}">내 캘린더 추가하기</button>
-              ${activeCertificatePicker === activeLibraryCert.rank ? renderCertificatePicker(activeLibraryCert) : ''}
-              ${activeCertificatePicker === activeLibraryCert.rank ? '<p class="picker-hint">선택하면 일정이 바로 캘린더에 추가돼요.</p>' : ''}
+              <button class="secondary-button" type="button" data-cert="${escapeHtml(activeLibraryCert.name)}" aria-expanded="${activeCertificatePicker === activeLibraryCert.name ? 'true' : 'false'}">내 캘린더 추가하기</button>
+              ${activeCertificatePicker === activeLibraryCert.name ? renderCertificatePicker(activeLibraryCert) : ''}
+              ${activeCertificatePicker === activeLibraryCert.name ? '<p class="picker-hint">선택하면 일정이 바로 캘린더에 추가돼요.</p>' : ''}
             </div>
           </div>
         </div>
       ` : ''}
-      <form id="certificate-search-form" class="company-search certificate-search">
-        <input id="certificate-search-input" type="search" placeholder="자격증 검색해서 추가" maxlength="40" />
-        <button class="secondary-button" type="submit">추가</button>
-      </form>
       ${recommendations.map(cert => `
-        <div class="certificate-card ${cert.seriesClass} ${activeCertificatePicker === cert.rank ? 'expanded' : ''}">
+        <div class="certificate-card ${cert.seriesClass} ${activeCertificatePicker === cert.name ? 'expanded' : ''}">
           <div class="certificate-head">
             <span class="priority">${cert.rank}순위</span>
             <strong>${escapeHtml(cert.name)}</strong>
@@ -1399,9 +1388,9 @@ function renderCertificatePlan() {
           </div>
           <div class="certificate-body">
             <p>${escapeHtml(cert.description)}</p>
-            <button class="secondary-button" type="button" data-cert="${cert.rank}" aria-expanded="${activeCertificatePicker === cert.rank ? 'true' : 'false'}">내 캘린더 추가하기</button>
-            ${activeCertificatePicker === cert.rank ? renderCertificatePicker(cert) : ''}
-            ${activeCertificatePicker === cert.rank ? '<p class="picker-hint">선택하면 일정이 바로 캘린더에 추가돼요.</p>' : ''}
+            <button class="secondary-button" type="button" data-cert="${escapeHtml(cert.name)}" aria-expanded="${activeCertificatePicker === cert.name ? 'true' : 'false'}">내 캘린더 추가하기</button>
+            ${activeCertificatePicker === cert.name ? renderCertificatePicker(cert) : ''}
+            ${activeCertificatePicker === cert.name ? '<p class="picker-hint">선택하면 일정이 바로 캘린더에 추가돼요.</p>' : ''}
           </div>
         </div>
       `).join('')}
@@ -1442,7 +1431,7 @@ function renderCertificatePicker(cert) {
       <p class="picker-desc">어느 회차를 캘린더에 넣을지 고르세요.</p>
       <div class="picker-list">
         ${options.map(option => `
-          <button class="picker-option" type="button" data-cert-round="${option.round}" data-cert="${cert.rank}">
+          <button class="picker-option" type="button" data-cert-round="${option.round}" data-cert="${escapeHtml(cert.name)}">
             <strong>${option.label}</strong>
             <span>${escapeHtml(option.summary)}</span>
           </button>
@@ -1454,31 +1443,6 @@ function renderCertificatePicker(cert) {
 
 function findCertificateByName(name) {
   return Object.values(CERTIFICATE_RECOMMENDATIONS).flat().find(item => item.name === name);
-}
-
-function addCustomCertificate(name) {
-  const trimmed = String(name || '').trim();
-  if (!trimmed) return;
-  if (!selectedCertificates.includes(trimmed)) {
-    selectedCertificates.unshift(trimmed);
-  }
-  const baseCert = findCertificateByName(trimmed);
-  const targetWeeks = baseCert ? getCertificateTargetPrepWeeks(baseCert) : 4;
-  const examDate = addDays(addMonths(startOfMonth(today), 1), targetWeeks * 7);
-  customEvents.unshift({
-    id: `cert-custom-${Date.now()}`,
-    title: `${trimmed} 시험`,
-    start: examDate,
-    end: examDate,
-    layer: 'certificate',
-    kind: '자격증',
-    detail: `${trimmed} 일정이 추가되었어요.`,
-    markerLabel: '시험',
-    eventLabel: trimmed,
-  });
-  layerState.certificate = true;
-  renderCalendar();
-  showToast(`${formatMonthLabel(examDate)} ${examDate.getDate()}일 ${trimmed} 자격증 일정이 캘린더에 추가되었어요.`);
 }
 
 function renderCertificateGoalEditor(certName) {

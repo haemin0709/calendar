@@ -469,58 +469,16 @@ aside{
   padding:0 0 2px;
 }
 
-.certificate-library{
-  padding:12px 14px;
+.certificate-library-select{
+  width:100%;
+  padding:10px 12px;
   border:1px solid var(--border);
-  border-radius:10px;
-  background:var(--surface-soft);
-}
-
-.certificate-library summary{
-  cursor:pointer;
-  color:var(--ink);
-  font-size:13px;
-  font-weight:700;
-  list-style:none;
-}
-
-.certificate-library summary::-webkit-details-marker{
-  display:none;
-}
-
-.certificate-library-list{
-  display:grid;
-  gap:8px;
-  margin-top:12px;
-}
-
-.certificate-library-item{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:8px 10px;
-  border:1px solid #e6ebf3;
   border-radius:8px;
   background:#fff;
-  cursor:pointer;
-  text-align:left;
-  width:100%;
-}
-
-.certificate-library-item strong{
+  color:var(--ink);
   font-size:13px;
-}
-
-.certificate-library-item span{
-  color:var(--muted);
-  font-size:11px;
-  white-space:nowrap;
-}
-
-.certificate-library-item.active{
-  border-color:var(--accent);
-  background:var(--accent-soft);
+  font-weight:600;
+  cursor:pointer;
 }
 
 .certificate-selected-preview{
@@ -529,10 +487,6 @@ aside{
 
 .preview-card{
   margin-top:8px;
-}
-
-.certificate-search{
-  margin-bottom:8px;
 }
 
 .company-panel-head{
