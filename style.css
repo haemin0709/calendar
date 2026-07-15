@@ -58,9 +58,8 @@ a{
   align-items:center;
   justify-content:space-between;
   gap:16px;
-  max-width:1200px;
   margin:0 auto;
-  padding:0 28px;
+  padding:0 max(28px, calc((100vw - 1200px) / 2));
   min-height:64px;
   border-bottom:1px solid var(--border);
 }
@@ -285,6 +284,11 @@ a{
 .calendar-header{
   max-width:none;
   background:var(--surface);
+  width:100%;
+}
+
+.landing-header{
+  width:100%;
 }
 
 .selection-summary{
@@ -307,13 +311,22 @@ a{
   cursor:pointer;
 }
 
-.company-dday-list{
+.dday-row{
   display:flex;
-  flex-wrap:wrap;
-  gap:8px;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
   padding:12px 28px 10px;
   background:var(--surface);
   border-bottom:1px solid var(--border);
+}
+
+.dday-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  min-width:0;
+  flex:1 1 0;
 }
 
 .company-dday-pill{
@@ -346,6 +359,10 @@ a{
 
 .certificate-pill strong{
   margin-left:auto;
+}
+
+.certificate-pill span{
+  max-width:none;
 }
 
 .pill-edit{
@@ -924,6 +941,19 @@ aside{
   height:5px;
   border-radius:50%;
   background:var(--accent);
+}
+
+.event-company-label{
+  display:inline-block;
+  min-width:0;
+  max-width:120px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.marker-only .event-company-label{
+  max-width:92px;
 }
 
 .event-marker-label{

@@ -135,6 +135,20 @@ const CERTIFICATE_RECOMMENDATIONS = {
   ],
 };
 
+const CERTIFICATE_PRIORITY_COMPANIES = {
+  'OPIc AL': ['삼성전자', '현대자동차', 'CJ제일제당'],
+  '컴퓨터활용능력 1급': ['한국전력공사', '국민건강보험공단', 'LG전자'],
+  'TOEIC 850+': ['SK하이닉스', '포스코', '롯데그룹'],
+  'TOEIC Speaking': ['삼성물산 상사부문', '한화솔루션', '아모레퍼시픽'],
+  'TOEIC 900+': ['대한항공', '현대글로비스', '삼성전자 DS/DX 해외법인'],
+  '국제무역사': ['LX인터내셔널', '현대코퍼레이션', '한국무역보험공사'],
+  '투자자산운용사': ['미래에셋증권', '신한은행', '삼성자산운용'],
+  'AFPK': ['KB국민은행', '하나은행', 'NH농협은행'],
+  '파생상품투자권유자문인력': ['우리은행', 'IBK기업은행', '한국투자증권'],
+  '한국사능력검정 1급': ['한국관광공사', '국가철도공단', '한국공항공사'],
+  '사회조사분석사 2급': ['통계청/국가데이터처', '한국소비자원', '한국갤럽·리서치 계열 공공기관'],
+};
+
 const COMPANY_RECOMMENDATIONS = {
   '국내 대기업': [
     { name: '삼성전자', style: 'brand', jobs: ['서비스기획', '마케팅', '인사·경영지원'] },
@@ -448,6 +462,7 @@ function getSelectedCertificateList() {
       return {
         cert,
         targetWeeks,
+        round: chosenRound.round,
         examDate: chosenRound.examDate,
         days: Math.max(0, Math.ceil((chosenRound.examDate - today) / (1000 * 60 * 60 * 24))),
       };
@@ -457,16 +472,7 @@ function getSelectedCertificateList() {
 }
 
 function getCertificatePriorityCompanies(certName) {
-  const companies = [];
-  Object.values(COMPANY_RECOMMENDATIONS).flat().forEach(company => {
-    const score = (company.jobs || []).reduce((acc, job) => {
-      const left = certName.toLowerCase();
-      const right = job.toLowerCase();
-      return acc + (left.includes(right.slice(0, 3)) || right.includes(left.slice(0, 3)) ? 1 : 0);
-    }, 0);
-    if (score > 0 && !companies.includes(company.name)) companies.push(company.name);
-  });
-  return companies.slice(0, 3);
+  return CERTIFICATE_PRIORITY_COMPANIES[certName] || [];
 }
 
 function getRecruitmentEvents(months) {
@@ -561,6 +567,7 @@ function getCertificateEvents() {
       kind: '자격증',
       detail: `준비 ${formatRange(plan.prepStart, plan.prepEnd)} · ${plan.description}`,
       seriesClass: plan.seriesClass,
+      eventLabel: plan.name,
       certName: plan.name,
     },
     {
@@ -572,6 +579,7 @@ function getCertificateEvents() {
       kind: '자격증',
       detail: `접수 ${formatRange(plan.applicationStart, plan.applicationEnd)} · 시험장과 준비물을 미리 확인하세요.`,
       seriesClass: plan.seriesClass,
+      eventLabel: plan.name,
       certName: plan.name,
     },
     {
@@ -583,6 +591,7 @@ function getCertificateEvents() {
       kind: '자격증',
       detail: `시험 ${formatRange(plan.examDate, plan.examDate)} · 실전처럼 마무리하세요.`,
       seriesClass: plan.seriesClass,
+      eventLabel: plan.name,
       certName: plan.name,
     },
   ]));
@@ -602,6 +611,7 @@ function addCertificateSchedule(rank, round = 1) {
       kind: '자격증',
       detail: `${cert.description} 준비 ${formatRange(selectedRound.prepStart, selectedRound.prepEnd)}`,
       markerLabel: '준비',
+      eventLabel: cert.name,
       certName: cert.name,
       certRound: selectedRound.round,
     },
@@ -614,6 +624,7 @@ function addCertificateSchedule(rank, round = 1) {
       kind: '자격증',
       detail: `접수 ${formatRange(selectedRound.applicationStart, selectedRound.applicationEnd)}`,
       markerLabel: '접수',
+      eventLabel: cert.name,
       certName: cert.name,
       certRound: selectedRound.round,
     },
@@ -626,6 +637,7 @@ function addCertificateSchedule(rank, round = 1) {
       kind: '자격증',
       detail: `시험 ${formatRange(selectedRound.examDate, selectedRound.examDate)}`,
       markerLabel: '시험',
+      eventLabel: cert.name,
       certName: cert.name,
       certRound: selectedRound.round,
     },
@@ -1015,6 +1027,7 @@ function renderWeekBlock(week, events) {
           ${visibleEvents.map(event => `
             <button class="event event-chip ${event.layer} ${event.seriesClass || ''} ${event.markerLabel ? 'marker-only' : ''}" data-event="${event.id}" type="button" title="${escapeHtml(event.title)}">
               <span class="event-dot"></span>
+              <span class="event-company-label">${escapeHtml(event.eventLabel || event.companyName || event.title)}</span>
               ${event.markerLabel ? `<span class="event-marker-label">${escapeHtml(event.markerLabel)}</span>` : ''}
             </button>
           `).join('')}
@@ -1202,25 +1215,29 @@ function renderCalendar() {
         <strong>${getGoalProgressText()}</strong>
         <small>${nextRecruitmentMonth ? `다음 공채 포인트는 ${formatMonthLabel(nextRecruitmentMonth)}입니다.` : '월별 일정을 차근차근 이어가세요.'}</small>
       </div>
-      ${getCompanyDdayList().length ? `
-        <div class="company-dday-list">
-          ${getCompanyDdayList().map(item => `
-            <div class="company-dday-pill">
-              <span>${escapeHtml(item.company)}</span>
-              <strong>D-${item.days}</strong>
+      ${(getCompanyDdayList().length || getCertificateDayItems().length) ? `
+        <div class="dday-row">
+          ${getCompanyDdayList().length ? `
+            <div class="dday-group company-dday-list">
+              ${getCompanyDdayList().map(item => `
+                <div class="company-dday-pill">
+                  <span>${escapeHtml(item.company)}</span>
+                  <strong>D-${item.days}</strong>
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
-        </div>
-      ` : ''}
-      ${getCertificateDayItems().length ? `
-        <div class="company-dday-list certificate-dday-list">
-          ${getCertificateDayItems().map(item => `
-            <div class="company-dday-pill certificate-pill">
-              <span>${escapeHtml(item.cert.name)}</span>
-              <strong>D-${item.days}</strong>
-              <button class="pill-edit" type="button" data-cert-goal-edit="${escapeHtml(item.cert.name)}">목표 ${item.targetWeeks}주</button>
+          ` : ''}
+          ${getCertificateDayItems().length ? `
+            <div class="dday-group certificate-dday-list">
+              ${getCertificateDayItems().map(item => `
+                <div class="company-dday-pill certificate-pill">
+                  <span>${escapeHtml(item.cert.name)}</span>
+                  <strong>D-${item.days}</strong>
+                  <button class="pill-edit" type="button" data-cert-goal-edit="${escapeHtml(item.cert.name)}">목표 ${item.targetWeeks}주</button>
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
+          ` : ''}
         </div>
       ` : ''}
       <div class="calendar-layout">
@@ -1477,7 +1494,7 @@ function renderCertificatePlan() {
           <div class="certificate-head">
             <span class="priority">${cert.rank}순위</span>
             <strong>${escapeHtml(cert.name)}</strong>
-            <small>${escapeHtml(getCertificatePriorityCompanies(cert.name).length ? `${getCertificatePriorityCompanies(cert.name).join(', ')} 기업에서 우대` : '우대 기업 정보 없음')}</small>
+            <small>${escapeHtml(getCertificatePriorityCompanies(cert.name).length ? `${getCertificatePriorityCompanies(cert.name).join(', ')} 우대` : '우대 기업 정보 없음')}</small>
           </div>
           <div class="certificate-body">
             <p>${escapeHtml(cert.description)}</p>
@@ -1561,6 +1578,7 @@ function addCustomCertificate(name) {
     kind: '자격증',
     detail: `${trimmed} 일정이 추가되었어요.`,
     markerLabel: '시험',
+    eventLabel: trimmed,
   });
   saveCustomEvents();
   layerState.certificate = true;
