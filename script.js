@@ -229,28 +229,25 @@ const LAYER_META = {
 
 const app = document.querySelector('#app');
 const today = new Date();
-const state = JSON.parse(sessionStorage.getItem('chwippo-selection') || 'null') || {
+const state = {
   track: '',
   job: '',
   season: '',
 };
-const storedLayerState = JSON.parse(localStorage.getItem('chwippo-layer-state') || 'null') || {};
-const storedCalendarView = Number(localStorage.getItem('chwippo-calendar-view') || '0');
 const layerState = {
   recruitment: true,
   certificate: true,
   aptitude: true,
   resume: true,
   personal: true,
-  ...storedLayerState,
 };
-const customEvents = JSON.parse(localStorage.getItem('chwippo-custom-events') || '[]');
-const customCompanyEvents = JSON.parse(localStorage.getItem('chwippo-company-events') || '[]');
-const selectedCompanies = JSON.parse(localStorage.getItem('chwippo-selected-companies') || '[]');
-const selectedCertificates = JSON.parse(localStorage.getItem('chwippo-selected-certificates') || '[]');
-const certificateTargetWeeks = JSON.parse(localStorage.getItem('chwippo-certificate-target-weeks') || '{}');
-const certificateVisibility = JSON.parse(localStorage.getItem('chwippo-certificate-visibility') || '{}');
-let calendarViewIndex = Number.isFinite(storedCalendarView) ? storedCalendarView : 0;
+const customEvents = [];
+const customCompanyEvents = [];
+const selectedCompanies = [];
+const selectedCertificates = [];
+const certificateTargetWeeks = {};
+const certificateVisibility = {};
+let calendarViewIndex = 0;
 let calendarTransition = '';
 let activeMoreEventsDate = '';
 let activeCertificatePicker = null;
@@ -282,38 +279,6 @@ function escapeHtml(value) {
     "'": '&#39;',
     '"': '&quot;',
   })[char]);
-}
-
-function saveSelection() {
-  sessionStorage.setItem('chwippo-selection', JSON.stringify(state));
-}
-
-function saveLayerState() {
-  localStorage.setItem('chwippo-layer-state', JSON.stringify(layerState));
-}
-
-function saveCustomEvents() {
-  localStorage.setItem('chwippo-custom-events', JSON.stringify(customEvents));
-}
-
-function saveCompanyEvents() {
-  localStorage.setItem('chwippo-company-events', JSON.stringify(customCompanyEvents));
-}
-
-function saveSelectedCompanies() {
-  localStorage.setItem('chwippo-selected-companies', JSON.stringify(selectedCompanies));
-}
-
-function saveSelectedCertificates() {
-  localStorage.setItem('chwippo-selected-certificates', JSON.stringify(selectedCertificates));
-}
-
-function saveCertificateTargetWeeks() {
-  localStorage.setItem('chwippo-certificate-target-weeks', JSON.stringify(certificateTargetWeeks));
-}
-
-function saveCertificateVisibility() {
-  localStorage.setItem('chwippo-certificate-visibility', JSON.stringify(certificateVisibility));
 }
 
 function showToast(message) {
@@ -449,7 +414,6 @@ function getCertificateTargetPrepWeeks(cert) {
 function setCertificateTargetPrepWeeks(certName, weeks) {
   const nextWeeks = Math.max(1, Number(weeks) || 1);
   certificateTargetWeeks[certName] = nextWeeks;
-  saveCertificateTargetWeeks();
 }
 
 function getSelectedCertificateList() {
@@ -647,11 +611,8 @@ function addCertificateSchedule(rank, round = 1) {
   customEvents.unshift(...certEvents);
   if (!selectedCertificates.includes(cert.name)) {
     selectedCertificates.unshift(cert.name);
-    saveSelectedCertificates();
   }
   layerState.certificate = true;
-  saveLayerState();
-  saveCustomEvents();
   trackEvent('certificate_schedule_added', { rank: cert.rank, name: cert.name, round: selectedRound.round });
   activeCertificatePicker = null;
   showToast(`${formatMonthLabel(selectedRound.examDate)} ${selectedRound.examDate.getDate()}일 ${selectedRound.round}회차 ${cert.name} 자격증 일정이 캘린더에 추가되었어요.`);
@@ -1017,22 +978,17 @@ function renderLanding() {
     state.job = '';
     selectedCompanies.length = 0;
     customCompanyEvents.length = 0;
-    saveSelectedCompanies();
-    saveCompanyEvents();
-    saveSelection();
     renderLanding();
   });
 
   document.querySelector('#job').addEventListener('change', event => {
     state.job = event.target.value;
-    saveSelection();
     renderLanding();
   });
 
   document.querySelectorAll('.season').forEach(button => {
     button.addEventListener('click', () => {
       state.season = button.dataset.season;
-      saveSelection();
       renderLanding();
     });
   });
@@ -1322,7 +1278,6 @@ function renderCalendar() {
     prevMonth.addEventListener('click', () => {
       if (calendarViewIndex <= 0) return;
       calendarViewIndex -= 1;
-      localStorage.setItem('chwippo-calendar-view', String(calendarViewIndex));
       calendarTransition = 'prev';
       trackEvent('calendar_month_navigated', { direction: 'prev', month_index: calendarViewIndex });
       renderCalendar();
@@ -1334,7 +1289,6 @@ function renderCalendar() {
     nextMonth.addEventListener('click', () => {
       if (calendarViewIndex >= monthDates.length - 1) return;
       calendarViewIndex += 1;
-      localStorage.setItem('chwippo-calendar-view', String(calendarViewIndex));
       calendarTransition = 'next';
       trackEvent('calendar_month_navigated', { direction: 'next', month_index: calendarViewIndex });
       renderCalendar();
@@ -1345,7 +1299,6 @@ function renderCalendar() {
   document.querySelectorAll('[data-layer]').forEach(input => {
     input.addEventListener('change', event => {
       layerState[event.target.dataset.layer] = event.target.checked;
-      saveLayerState();
       trackEvent('layer_toggle_used', {
         layer: event.target.dataset.layer,
         enabled: event.target.checked,
@@ -1357,7 +1310,6 @@ function renderCalendar() {
   document.querySelectorAll('[data-certificate-toggle]').forEach(input => {
     input.addEventListener('change', event => {
       certificateVisibility[event.target.dataset.certificateToggle] = event.target.checked;
-      saveCertificateVisibility();
       renderCalendar();
     });
   });
@@ -1381,7 +1333,6 @@ function renderCalendar() {
       detail: detail || '사용자가 직접 추가한 일정입니다.',
     });
 
-    saveCustomEvents();
     trackEvent('custom_event_added', { layer, title });
     renderCalendar();
   });
@@ -1510,7 +1461,6 @@ function addCustomCertificate(name) {
   if (!trimmed) return;
   if (!selectedCertificates.includes(trimmed)) {
     selectedCertificates.unshift(trimmed);
-    saveSelectedCertificates();
   }
   const baseCert = findCertificateByName(trimmed);
   const targetWeeks = baseCert ? getCertificateTargetPrepWeeks(baseCert) : 4;
@@ -1526,9 +1476,7 @@ function addCustomCertificate(name) {
     markerLabel: '시험',
     eventLabel: trimmed,
   });
-  saveCustomEvents();
   layerState.certificate = true;
-  saveLayerState();
   renderCalendar();
   showToast(`${formatMonthLabel(examDate)} ${examDate.getDate()}일 ${trimmed} 자격증 일정이 캘린더에 추가되었어요.`);
 }
@@ -1562,10 +1510,8 @@ function addCompanySchedule(companyName) {
   const storedIndex = customCompanyEvents.findIndex(item => item.name === companyName);
   if (storedIndex >= 0) customCompanyEvents.splice(storedIndex, 1);
   customCompanyEvents.unshift({ name: companyName, order: index });
-  saveCompanyEvents();
   if (!selectedCompanies.includes(companyName)) {
     selectedCompanies.unshift(companyName);
-    saveSelectedCompanies();
   }
   const monthDates = monthRange(today, targetSeasonDate());
   const deadlineMonthIndex = monthDates.findIndex(monthDate => {
@@ -1574,7 +1520,6 @@ function addCompanySchedule(companyName) {
   });
   if (deadlineMonthIndex >= 0) {
     calendarViewIndex = deadlineMonthIndex;
-    localStorage.setItem('chwippo-calendar-view', String(calendarViewIndex));
   }
   trackEvent('company_schedule_added', { company: companyName, source: found ? 'recommendation' : 'search' });
   renderCalendar();
@@ -1610,7 +1555,6 @@ function showDetail(event) {
       const index = customEvents.findIndex(item => item.id === event.id);
       if (index >= 0) {
         customEvents.splice(index, 1);
-        saveCustomEvents();
       }
       detail.hidden = true;
       renderCalendar();

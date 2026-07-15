@@ -13,11 +13,6 @@
   --aptitude:#e2f8ea;
   --resume:#fff1ca;
   --personal:#f7e2ff;
-  --recruit-strong:#2563eb;
-  --certificate-strong:#db2777;
-  --aptitude-strong:#059669;
-  --resume-strong:#d97706;
-  --personal-strong:#7c3aed;
   --radius:8px;
 }
 
@@ -1048,36 +1043,36 @@ aside{
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  color:#fff;
+  color:#1e2430;
   font-weight:600;
   font-size:11px;
 }
 
 .event-marker-label{
   flex:0 0 auto;
-  color:rgba(255,255,255,.85);
+  color:#4a5568;
   font-size:9px;
   font-weight:700;
 }
 
 .event-chip.recruitment{
-  background:var(--recruit-strong);
+  background:var(--recruit);
 }
 
 .event-chip.certificate{
-  background:var(--certificate-strong);
+  background:var(--certificate);
 }
 
 .event-chip.aptitude{
-  background:var(--aptitude-strong);
+  background:var(--aptitude);
 }
 
 .event-chip.resume{
-  background:var(--resume-strong);
+  background:var(--resume);
 }
 
 .event-chip.personal{
-  background:var(--personal-strong);
+  background:var(--personal);
 }
 
 .event-range.recruitment{
