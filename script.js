@@ -220,11 +220,14 @@ const DAILY_QUOTES = [
 ];
 
 const LAYER_META = {
-  recruitment: { label: '공채 서류마감', color: 'recruitment' },
-  certificate: { label: '자격증 접수·시험', color: 'certificate' },
-  aptitude: { label: '인적성 준비 구간', color: 'aptitude' },
-  resume: { label: '자소서 마일스톤', color: 'resume' },
-  personal: { label: '개인 일정', color: 'personal' },
+  recruitment: { label: '서류 지원 마감', quickAddLabel: '서류 지원 마감', color: 'recruitment', group: '공채 준비' },
+  resume: { label: '서류 준비', quickAddLabel: '서류 준비', color: 'resume', group: '공채 준비' },
+  aptitude: { label: '인적성 준비', quickAddLabel: '인적성 준비', color: 'aptitude', group: '공채 준비' },
+  certificatePrep: { label: '시험 준비', quickAddLabel: '자격증 시험 준비', color: 'certificate', group: '자격증 준비' },
+  certificateApply: { label: '접수 마감', quickAddLabel: '자격증 접수 마감', color: 'certificate', group: '자격증 준비' },
+  certificateExam: { label: '시험', quickAddLabel: '자격증 시험', color: 'certificate', group: '자격증 준비' },
+  certificateResult: { label: '결과 발표', quickAddLabel: '자격증 결과 발표', color: 'certificate', group: '자격증 준비' },
+  personal: { label: '개인 일정', quickAddLabel: '개인 일정', color: 'personal', group: '개인 일정' },
 };
 
 const app = document.querySelector('#app');
@@ -236,9 +239,12 @@ const state = {
 };
 const layerState = {
   recruitment: false,
-  certificate: false,
-  aptitude: false,
   resume: false,
+  aptitude: false,
+  certificatePrep: false,
+  certificateApply: false,
+  certificateExam: false,
+  certificateResult: false,
   personal: false,
 };
 const customEvents = [];
@@ -511,6 +517,7 @@ function getCertificateRoundOptions(cert) {
     const applicationStart = addDays(anchor, 7);
     const applicationEnd = addDays(anchor, 13);
     const examDate = addDays(anchor, 21);
+    const resultDate = addDays(examDate, 14);
 
     return {
       ...option,
@@ -520,55 +527,10 @@ function getCertificateRoundOptions(cert) {
       applicationStart,
       applicationEnd,
       examDate,
+      resultDate,
       summary: `${formatMonthLabel(examDate)} ${option.label}`,
     };
   });
-}
-
-function certificateEventExists(cert, suffix) {
-  const title = `${cert.name} ${suffix}`;
-  return customEvents.some(event => event.title === title && event.layer === 'certificate');
-}
-
-function getCertificateEvents() {
-  return getCertificateRecommendations().flatMap(plan => ([
-    {
-      id: `certificate-${plan.rank}-prep`,
-      title: `${plan.rank}순위 ${plan.name} 준비 기간`,
-      start: plan.prepStart,
-      end: plan.prepEnd,
-      layer: 'certificate',
-      kind: '자격증',
-      detail: `준비 ${formatRange(plan.prepStart, plan.prepEnd)} · ${plan.description}`,
-      seriesClass: plan.seriesClass,
-      eventLabel: plan.name,
-      certName: plan.name,
-    },
-    {
-      id: `certificate-${plan.rank}-apply`,
-      title: `${plan.rank}순위 ${plan.name} 접수 기간`,
-      start: plan.applicationStart,
-      end: plan.applicationEnd,
-      layer: 'certificate',
-      kind: '자격증',
-      detail: `접수 ${formatRange(plan.applicationStart, plan.applicationEnd)} · 시험장과 준비물을 미리 확인하세요.`,
-      seriesClass: plan.seriesClass,
-      eventLabel: plan.name,
-      certName: plan.name,
-    },
-    {
-      id: `certificate-${plan.rank}-exam`,
-      title: `${plan.rank}순위 ${plan.name} 시험일`,
-      start: plan.examDate,
-      end: plan.examDate,
-      layer: 'certificate',
-      kind: '자격증',
-      detail: `시험 ${formatRange(plan.examDate, plan.examDate)} · 실전처럼 마무리하세요.`,
-      seriesClass: plan.seriesClass,
-      eventLabel: plan.name,
-      certName: plan.name,
-    },
-  ]));
 }
 
 function addCertificateSchedule(certName, round = 1) {
@@ -578,10 +540,10 @@ function addCertificateSchedule(certName, round = 1) {
   const certEvents = [
     {
       id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-prep`,
-      title: `${cert.name} ${selectedRound.round}회차 준비`,
+      title: `${cert.name} ${selectedRound.round}회차 시험 준비`,
       start: selectedRound.prepStart,
-      end: selectedRound.prepStart,
-      layer: 'certificate',
+      end: selectedRound.prepEnd,
+      layer: 'certificatePrep',
       kind: '자격증',
       detail: `${cert.description} 준비 ${formatRange(selectedRound.prepStart, selectedRound.prepEnd)}`,
       markerLabel: '준비',
@@ -591,12 +553,12 @@ function addCertificateSchedule(certName, round = 1) {
     },
     {
       id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-apply`,
-      title: `${cert.name} ${selectedRound.round}회차 접수`,
+      title: `${cert.name} ${selectedRound.round}회차 접수 마감`,
       start: selectedRound.applicationStart,
       end: selectedRound.applicationStart,
-      layer: 'certificate',
+      layer: 'certificateApply',
       kind: '자격증',
-      detail: `접수 ${formatRange(selectedRound.applicationStart, selectedRound.applicationEnd)}`,
+      detail: `접수 마감 ${formatRange(selectedRound.applicationStart, selectedRound.applicationEnd)}`,
       markerLabel: '접수',
       eventLabel: cert.name,
       certName: cert.name,
@@ -607,10 +569,23 @@ function addCertificateSchedule(certName, round = 1) {
       title: `${cert.name} ${selectedRound.round}회차 시험`,
       start: selectedRound.examDate,
       end: selectedRound.examDate,
-      layer: 'certificate',
+      layer: 'certificateExam',
       kind: '자격증',
       detail: `시험 ${formatRange(selectedRound.examDate, selectedRound.examDate)}`,
       markerLabel: '시험',
+      eventLabel: cert.name,
+      certName: cert.name,
+      certRound: selectedRound.round,
+    },
+    {
+      id: `cert-${Date.now()}-${cert.rank}-${selectedRound.round}-result`,
+      title: `${cert.name} ${selectedRound.round}회차 결과 발표`,
+      start: selectedRound.resultDate,
+      end: selectedRound.resultDate,
+      layer: 'certificateResult',
+      kind: '자격증',
+      detail: `결과 발표(예상) ${formatRange(selectedRound.resultDate, selectedRound.resultDate)} · 시험일로부터 2주 후로 예상한 날짜예요.`,
+      markerLabel: '발표',
       eventLabel: cert.name,
       certName: cert.name,
       certRound: selectedRound.round,
@@ -621,10 +596,26 @@ function addCertificateSchedule(certName, round = 1) {
   if (!selectedCertificates.includes(cert.name)) {
     selectedCertificates.unshift(cert.name);
   }
-  layerState.certificate = true;
+  layerState.certificatePrep = true;
+  layerState.certificateApply = true;
+  layerState.certificateExam = true;
+  layerState.certificateResult = true;
   trackEvent('certificate_schedule_added', { rank: cert.rank, name: cert.name, round: selectedRound.round });
   activeCertificatePicker = null;
   showToast(`${formatMonthLabel(selectedRound.examDate)} ${selectedRound.examDate.getDate()}일 ${selectedRound.round}회차 ${cert.name} 자격증 일정이 캘린더에 추가되었어요.`);
+  renderCalendar();
+}
+
+function removeCertificateSchedule(certName) {
+  const index = selectedCertificates.indexOf(certName);
+  if (index >= 0) selectedCertificates.splice(index, 1);
+  for (let i = customEvents.length - 1; i >= 0; i -= 1) {
+    if (customEvents[i].certName === certName) customEvents.splice(i, 1);
+  }
+  delete certificateVisibility[certName];
+  delete certificateTargetWeeks[certName];
+  trackEvent('certificate_schedule_removed', { name: certName });
+  showToast(`${certName} 자격증 일정을 삭제했어요.`);
   renderCalendar();
 }
 
@@ -726,8 +717,11 @@ function getPinnedEvents(events, day) {
     recruitment: 0,
     aptitude: 1,
     resume: 2,
-    certificate: 3,
-    personal: 4,
+    certificatePrep: 3,
+    certificateApply: 4,
+    certificateExam: 5,
+    certificateResult: 6,
+    personal: 7,
   };
 
   return [...events]
@@ -762,8 +756,10 @@ function getCustomEvents() {
   }));
 }
 
+const CERTIFICATE_LAYERS = new Set(['certificatePrep', 'certificateApply', 'certificateExam', 'certificateResult']);
+
 function isCertificateVisible(event) {
-  if (event.layer !== 'certificate') return true;
+  if (!CERTIFICATE_LAYERS.has(event.layer)) return true;
   if (!event.certName) return true;
   if (certificateVisibility[event.certName] === false) return false;
   return true;
@@ -783,11 +779,14 @@ function monthEventsForSummary(events, monthDate) {
 
 function sortDayEvents(events) {
   const layerPriority = {
-    certificate: 0,
-    recruitment: 1,
-    aptitude: 2,
-    resume: 3,
-    personal: 4,
+    certificatePrep: 0,
+    certificateApply: 1,
+    certificateExam: 2,
+    certificateResult: 3,
+    recruitment: 4,
+    aptitude: 5,
+    resume: 6,
+    personal: 7,
   };
 
   return [...events].sort((left, right) => {
@@ -1129,25 +1128,7 @@ function renderCalendar() {
           </section>
           <section class="layer-panel">
             <p class="panel-label">표시할 일정</p>
-            ${Object.entries(LAYER_META).map(([key, meta]) => `
-              <label class="layer-row">
-                <input type="checkbox" data-layer="${key}" ${layerState[key] ? 'checked' : ''} />
-                <i class="swatch ${meta.color}"></i>
-                ${meta.label}
-              </label>
-            `).join('')}
-            ${getSelectedCertificateList().length ? `
-              <div class="certificate-toggle-group">
-                <p class="panel-label">자격증 개별 표시</p>
-                ${getSelectedCertificateList().map(item => `
-                  <label class="layer-row certificate-row">
-                    <input type="checkbox" data-certificate-toggle="${escapeHtml(item.cert.name)}" ${certificateVisibility[item.cert.name] === false ? '' : 'checked'} />
-                    <i class="swatch certificate"></i>
-                    ${escapeHtml(item.cert.name)}
-                  </label>
-                `).join('')}
-              </div>
-            ` : ''}
+            ${renderLayerChecklist()}
           </section>
           <section class="company-panel-section">
             <p class="panel-label">관심 기업 추가하기</p>
@@ -1163,7 +1144,7 @@ function renderCalendar() {
               <input id="event-title" type="text" placeholder="일정 제목" maxlength="30" required />
               <input id="event-date" type="date" value="${toDateInputValue(today)}" required />
               <select id="event-layer">
-                ${Object.entries(LAYER_META).map(([key, meta]) => `<option value="${key}" ${key === 'personal' ? 'selected' : ''}>${meta.label}</option>`).join('')}
+                ${Object.entries(LAYER_META).map(([key, meta]) => `<option value="${key}" ${key === 'personal' ? 'selected' : ''}>${meta.quickAddLabel}</option>`).join('')}
               </select>
               <textarea id="event-detail" rows="3" placeholder="메모"></textarea>
               <button type="submit" class="primary-button compact">일정 추가 <span>＋</span></button>
@@ -1311,6 +1292,12 @@ function renderCalendar() {
     });
   });
 
+  document.querySelectorAll('[data-certificate-remove]').forEach(button => {
+    button.addEventListener('click', () => {
+      removeCertificateSchedule(button.dataset.certificateRemove);
+    });
+  });
+
   document.querySelector('#event-form').addEventListener('submit', event => {
     event.preventDefault();
     const title = document.querySelector('#event-title').value.trim();
@@ -1346,6 +1333,57 @@ function renderCalendar() {
       renderCalendar();
     });
   });
+}
+
+function renderLayerChecklist() {
+  const groups = new Map();
+  Object.entries(LAYER_META).forEach(([key, meta]) => {
+    if (!groups.has(meta.group)) groups.set(meta.group, []);
+    groups.get(meta.group).push([key, meta]);
+  });
+
+  const certificateList = getSelectedCertificateList();
+
+  return [...groups.entries()].map(([groupName, items], groupIndex) => {
+    const groupLabelClass = groupIndex === 0 ? 'layer-group-label first' : 'layer-group-label';
+    const typeCheckboxes = items.map(([key, meta]) => `
+      <label class="layer-row">
+        <input type="checkbox" data-layer="${key}" ${layerState[key] ? 'checked' : ''} />
+        <i class="swatch ${meta.color}"></i>
+        ${meta.label}
+      </label>
+    `).join('');
+
+    if (groupName === '자격증 준비' && certificateList.length) {
+      return `
+        <p class="${groupLabelClass}">${escapeHtml(groupName)}</p>
+        <div class="layer-columns">
+          <div class="layer-column">
+            <p class="layer-subgroup-label">유형별로 보기</p>
+            ${typeCheckboxes}
+          </div>
+          <div class="layer-column">
+            <p class="layer-subgroup-label">자격증별로 보기</p>
+            ${certificateList.map(item => `
+              <div class="layer-row certificate-row">
+                <label class="certificate-row-label">
+                  <input type="checkbox" data-certificate-toggle="${escapeHtml(item.cert.name)}" ${certificateVisibility[item.cert.name] === false ? '' : 'checked'} />
+                  <i class="swatch certificate"></i>
+                  ${escapeHtml(item.cert.name)}
+                </label>
+                <button class="certificate-remove-button" type="button" data-certificate-remove="${escapeHtml(item.cert.name)}" aria-label="${escapeHtml(item.cert.name)} 삭제">×</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <p class="${groupLabelClass}">${escapeHtml(groupName)}</p>
+      ${typeCheckboxes}
+    `;
+  }).join('');
 }
 
 function renderCertificatePlan() {

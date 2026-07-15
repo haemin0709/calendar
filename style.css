@@ -503,14 +503,79 @@ aside{
   font-size:14px;
 }
 
-.certificate-toggle-group{
-  margin-top:10px;
-  padding-top:10px;
-  border-top:1px solid #e9edf4;
+.layer-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+.layer-column{
+  min-width:0;
+}
+
+.layer-subgroup-label{
+  margin:6px 0 2px;
+  color:#9aa2ad;
+  font-size:10px;
+  font-weight:700;
+}
+
+.certificate-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:0;
+}
+
+.certificate-row-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 2px;
+  flex:1;
+  min-width:0;
+  cursor:pointer;
+}
+
+.certificate-remove-button{
+  flex:0 0 auto;
+  width:20px;
+  height:20px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:#9aa2ad;
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.certificate-remove-button:hover{
+  background:#fbe9ee;
+  color:#c23b5a;
 }
 
 .company-panel{
   padding:0;
+}
+
+.layer-group-label{
+  margin:14px 0 2px;
+  padding-top:10px;
+  border-top:1px solid #edf0f5;
+  color:#9aa2ad;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+}
+
+.layer-group-label.first{
+  margin-top:0;
+  padding-top:0;
+  border-top:0;
 }
 
 .layer-row{
@@ -519,6 +584,11 @@ aside{
   gap:8px;
   padding:7px 2px;
   cursor:pointer;
+}
+
+.layer-row.certificate-row{
+  padding:0;
+  cursor:default;
 }
 
 .layer-row input{
@@ -1013,7 +1083,10 @@ aside{
   background:var(--recruit);
 }
 
-.event-chip.certificate{
+.event-chip.certificatePrep,
+.event-chip.certificateApply,
+.event-chip.certificateExam,
+.event-chip.certificateResult{
   background:var(--certificate);
 }
 
@@ -1101,7 +1174,10 @@ aside{
   background:var(--recruit);
 }
 
-.popover-dot.certificate{ background:var(--certificate); }
+.popover-dot.certificatePrep,
+.popover-dot.certificateApply,
+.popover-dot.certificateExam,
+.popover-dot.certificateResult{ background:var(--certificate); }
 .popover-dot.aptitude{ background:var(--aptitude); }
 .popover-dot.resume{ background:var(--resume); }
 .popover-dot.personal{ background:var(--personal); }
