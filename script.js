@@ -137,16 +137,16 @@ const CERTIFICATE_RECOMMENDATIONS = {
 
 const CERTIFICATE_PRIORITY_COMPANIES = {
   'OPIc AL': ['삼성전자', '현대자동차', 'CJ제일제당'],
-  '컴퓨터활용능력 1급': ['한국전력공사', '국민건강보험공단', 'LG전자'],
-  'TOEIC 850+': ['SK하이닉스', '포스코', '롯데그룹'],
-  'TOEIC Speaking': ['삼성물산 상사부문', '한화솔루션', '아모레퍼시픽'],
-  'TOEIC 900+': ['대한항공', '현대글로비스', '삼성전자 DS/DX 해외법인'],
-  '국제무역사': ['LX인터내셔널', '현대코퍼레이션', '한국무역보험공사'],
-  '투자자산운용사': ['미래에셋증권', '신한은행', '삼성자산운용'],
+  '컴퓨터활용능력 1급': ['한국전력공사', '한국토지주택공사', '한국수자원공사'],
+  'TOEIC 850+': ['SK하이닉스', 'LG전자', '삼성전자'],
+  'TOEIC Speaking': ['Amazon', 'Microsoft', 'Apple'],
+  'TOEIC 900+': ['Google', 'Meta', 'Amazon'],
+  '국제무역사': ['CJ제일제당', '현대자동차', 'LG전자'],
+  '투자자산운용사': ['신한은행', 'KB국민은행', '하나은행'],
   'AFPK': ['KB국민은행', '하나은행', 'NH농협은행'],
-  '파생상품투자권유자문인력': ['우리은행', 'IBK기업은행', '한국투자증권'],
-  '한국사능력검정 1급': ['한국관광공사', '국가철도공단', '한국공항공사'],
-  '사회조사분석사 2급': ['통계청/국가데이터처', '한국소비자원', '한국갤럽·리서치 계열 공공기관'],
+  '파생상품투자권유자문인력': ['우리은행', '신한은행', 'NH농협은행'],
+  '한국사능력검정 1급': ['한국철도공사', '인천국제공항공사', '한국전력공사'],
+  '사회조사분석사 2급': ['한국수자원공사', '한국토지주택공사', '한국철도공사'],
 };
 
 const COMPANY_RECOMMENDATIONS = {
@@ -254,6 +254,7 @@ let calendarViewIndex = Number.isFinite(storedCalendarView) ? storedCalendarView
 let calendarTransition = '';
 let activeMoreEventsDate = '';
 let activeCertificatePicker = null;
+let activeCertificateLibraryRank = null;
 let toastTimer = null;
 let toastMessage = '';
 let activeCertificateGoalEditor = null;
@@ -487,13 +488,13 @@ function getRecruitmentEvents(months) {
       const monthEnd = endOfMonth(monthDate);
       return {
         id: `recruit-${monthDate.getFullYear()}-${monthDate.getMonth()}`,
-        title: `${state.job} 공채 포인트`,
+        title: `${state.job} 공채 서류 마감`,
         start: monthStart,
         end: monthEnd,
         layer: 'recruitment',
-        kind: '공채 시즌',
+        kind: '서류 마감',
         detail: `${state.track}의 ${state.job} 직무는 보통 ${blueprint.label}에 공고가 자주 열려요. ${blueprint.detail}`,
-        badge: '공채 포인트',
+        badge: '공채 서류 마감',
       };
     });
 }
@@ -672,21 +673,21 @@ function buildCompanyEvent(companyName, index, source = 'recommendation') {
   const deadline = addDays(targetSeasonDate(), -21);
   const order = index + 1;
   const offset = hashCode(companyName) % 16;
-  const applicationStart = addDays(deadline, -18 - offset - (order * 2));
-  const applicationEnd = addDays(applicationStart, 6 + (offset % 3));
-  const aptitudeStart = addDays(applicationStart, -12 - (offset % 4));
-  const aptitudeEnd = addDays(aptitudeStart, 10 + (order % 3));
-  const resumeStart = addDays(aptitudeStart, -22 - (offset % 5));
-  const resumeEnd = addDays(applicationStart, -3);
+  const applicationStart = deadline;
+  const applicationEnd = deadline;
+  const aptitudeEnd = addDays(applicationStart, -1 - (offset % 2));
+  const aptitudeStart = addDays(aptitudeEnd, -9 - (order % 3));
+  const resumeEnd = addDays(aptitudeStart, -1);
+  const resumeStart = addDays(resumeEnd, -18 - (offset % 4));
 
   return {
     id: `company-${source}-${companyName}-${order}`.replace(/\s+/g, '-'),
-    title: `${companyName} 공채 일정`,
+    title: `${companyName} 공채 서류 마감`,
     start: applicationStart,
     end: applicationEnd,
     layer: 'recruitment',
-    kind: '기업 공채',
-    detail: `${companyName} 기준으로 서류접수, 인적성 준비, 서류 준비 기간을 자동 배치했어요.`,
+    kind: '서류 마감',
+    detail: `${companyName} 서류 마감일을 기준으로 자소서 마일스톤과 인적성 준비 구간을 역산했어요.`,
     companyName,
     companySource: source,
     companySchedule: {
@@ -701,11 +702,10 @@ function buildCompanyEvent(companyName, index, source = 'recommendation') {
 }
 
 function getCompanyEvents() {
-  const selectedEvents = selectedCompanies.map((company, index) => buildCompanyEvent(company, index, 'selected'));
   const searchEvents = customCompanyEvents.map(item => buildCompanyEvent(item.name, item.order || 0, 'search'));
   const unique = new Map();
 
-  [...selectedEvents, ...searchEvents].forEach(event => {
+  searchEvents.forEach(event => {
     const key = `${event.companySource}:${event.companyName}`;
     if (unique.has(key)) return;
     unique.set(key, event);
@@ -714,12 +714,13 @@ function getCompanyEvents() {
   return [...unique.values()].flatMap(event => ([
     {
       id: `${event.id}-resume`,
-      title: `${event.companyName} 서류 준비`,
+      title: `${event.companyName} 자소서 마일스톤`,
       start: event.companySchedule.resumeStart,
       end: event.companySchedule.resumeEnd,
       layer: 'resume',
-      kind: '기업 준비',
-      detail: `${event.companyName} 서류 준비 기간입니다.`,
+      kind: '자소서 마일스톤',
+      detail: `${event.companyName} 서류 마감일을 기준으로 역산한 자소서 마일스톤입니다.`,
+      eventLabel: `${event.companyName} 자소서 마일스톤`,
       companyName: event.companyName,
       companySource: event.companySource,
     },
@@ -729,19 +730,21 @@ function getCompanyEvents() {
       start: event.companySchedule.aptitudeStart,
       end: event.companySchedule.aptitudeEnd,
       layer: 'aptitude',
-      kind: '기업 준비',
-      detail: `${event.companyName} 인적성 준비 기간입니다.`,
+      kind: '인적성 준비',
+      detail: `${event.companyName} 서류 마감일을 기준으로 역산한 인적성 준비 구간입니다.`,
+      eventLabel: `${event.companyName} 인적성 준비 기간`,
       companyName: event.companyName,
       companySource: event.companySource,
     },
     {
       id: event.id,
-      title: `${event.companyName} 공채 일정`,
+      title: `${event.companyName} 공채 서류 마감`,
       start: event.companySchedule.applicationStart,
       end: event.companySchedule.applicationEnd,
       layer: 'recruitment',
-      kind: '기업 공채',
+      kind: '서류 마감',
       detail: `${event.companyName} 서류접수 기간입니다.`,
+      eventLabel: `${event.companyName} 서류 준비 기간`,
       companyName: event.companyName,
       companySource: event.companySource,
     },
@@ -780,97 +783,6 @@ function getCertificateDayItems() {
   }).filter(Boolean).sort((a, b) => a.days - b.days);
 }
 
-function getBaseEvents() {
-  const deadline = addDays(targetSeasonDate(), -21);
-  const resumeStart = addDays(deadline, -30);
-  const resumeFinish = addDays(deadline, -1);
-  const interviewPractice = addDays(deadline, -10);
-
-  return [
-    {
-      id: 'deadline',
-      title: `${state.track} ${state.season} 서류 마감`,
-      start: deadline,
-      end: deadline,
-      layer: 'recruitment',
-      kind: '마감',
-      detail: '목표 기업군의 공채 서류 제출 마감일입니다.',
-    },
-    {
-      id: 'application-prep',
-      title: '서류 준비 기간',
-      start: resumeStart,
-      end: resumeFinish,
-      layer: 'resume',
-      kind: '서류 준비',
-      detail: '자기소개서, 경력 정리, 지원동기 초안을 한 번에 묶어두는 긴 구간입니다.',
-    },
-    {
-      id: 'resume',
-      title: '마스터 자소서 완성',
-      start: addDays(deadline, -14),
-      end: addDays(deadline, -14),
-      layer: 'resume',
-      kind: '자소서',
-      detail: '대표 경험과 지원동기를 하나의 자소서 구조로 묶어두는 날입니다.',
-    },
-    {
-      id: 'interview-practice',
-      title: '면접 답변 초안 정리',
-      start: interviewPractice,
-      end: interviewPractice,
-      layer: 'resume',
-      kind: '면접',
-      detail: '자기소개, 지원동기, 갈등 경험 답변을 짧은 문장으로 먼저 굳혀보세요.',
-    },
-  ];
-}
-
-function getAptitudeEvents() {
-  const plans = {
-    '국내 대기업': {
-      title: '인적성 준비 시작',
-      offset: -28,
-      kind: '인적성',
-      detail: '언어·수리·추리 영역의 기본 문제풀이를 시작해 보세요.',
-    },
-    '해외 대기업': {
-      title: '영문 레쥬메 초안 완성',
-      offset: -20,
-      kind: '레쥬메',
-      detail: '성과 중심의 영문 이력서를 다듬는 단계로 들어가 보세요.',
-    },
-    '국내 은행권': {
-      title: 'NCS 집중 준비 시작',
-      offset: -24,
-      kind: 'NCS',
-      detail: '금융·경제 상식과 NCS 문제풀이에 집중할 시점이에요.',
-    },
-    '국내 공기업': {
-      title: 'NCS 준비 시작',
-      offset: -22,
-      kind: 'NCS',
-      detail: '직업기초능력평가와 자소서 문항 준비를 병행해 보세요.',
-    },
-  };
-
-  const plan = plans[state.track] || plans['국내 대기업'];
-  const deadline = addDays(targetSeasonDate(), -21);
-  const eventEnd = addDays(deadline, -1);
-  const eventStart = addDays(deadline, plan.offset);
-  return [
-    {
-      id: 'aptitude',
-      title: '인적성 준비 기간',
-      start: eventStart,
-      end: eventEnd,
-      layer: 'aptitude',
-      kind: plan.kind,
-      detail: `${plan.title} · ${plan.detail}`,
-    },
-  ];
-}
-
 function getCustomEvents() {
   return customEvents.map(event => ({
     ...event,
@@ -888,12 +800,7 @@ function isCertificateVisible(event) {
 }
 
 function getAllEvents() {
-  const months = monthRange(today, targetSeasonDate());
-  const recruitmentEvents = getRecruitmentEvents(months);
-  const baseEvents = getBaseEvents();
-  const aptitudeEvents = getAptitudeEvents();
-  const companyEvents = getCompanyEvents();
-  return [...baseEvents, ...aptitudeEvents, ...recruitmentEvents, ...companyEvents, ...getCustomEvents()];
+  return [...getCompanyEvents(), ...getCustomEvents()];
 }
 
 function eventIntersectsMonth(event, monthDate) {
@@ -1026,7 +933,6 @@ function renderWeekBlock(week, events) {
         <div class="day-events">
           ${visibleEvents.map(event => `
             <button class="event event-chip ${event.layer} ${event.seriesClass || ''} ${event.markerLabel ? 'marker-only' : ''}" data-event="${event.id}" type="button" title="${escapeHtml(event.title)}">
-              <span class="event-dot"></span>
               <span class="event-company-label">${escapeHtml(event.eventLabel || event.companyName || event.title)}</span>
               ${event.markerLabel ? `<span class="event-marker-label">${escapeHtml(event.markerLabel)}</span>` : ''}
             </button>
@@ -1153,7 +1059,6 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
   const monthEvents = monthEventsForSummary(events, monthDate);
   const recruitmentActive = monthEvents.some(event => event.layer === 'recruitment');
   const weeks = buildMonthWeeks(monthDate);
-  const visibleMultiDayEvents = getVisibleMultiDayEvents(events, monthDate);
 
   return `
     <section class="month-section ${recruitmentActive ? 'recruitment-active' : ''} ${calendarTransition ? `turn-${calendarTransition}` : ''}">
@@ -1173,7 +1078,7 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
         </div>
       </div>
       <div class="month-grid">
-        ${weeks.map(week => renderWeekBlock(week, visibleMultiDayEvents)).join('')}
+        ${weeks.map(week => renderWeekBlock(week, events)).join('')}
       </div>
     </section>
   `;
@@ -1244,8 +1149,18 @@ function renderCalendar() {
         <aside>
           <section class="next-task">
             <p class="panel-label">오늘의 한 걸음</p>
-            <strong>${escapeHtml((events.find(event => event.layer === 'aptitude') || events[0]).title)}</strong>
-            <p>${escapeHtml((events.find(event => event.layer === 'aptitude') || events[0]).detail)}</p>
+            ${(() => {
+              const nextTaskEvent = events.find(event => event.layer === 'aptitude') || events[0];
+              return nextTaskEvent
+                ? `
+                  <strong>${escapeHtml(nextTaskEvent.title)}</strong>
+                  <p>${escapeHtml(nextTaskEvent.detail)}</p>
+                `
+                : `
+                  <strong>관심 기업을 선택해보세요</strong>
+                  <p>아래에서 관심 기업을 추가하면 서류 마감, 인적성 준비, 자소서 마일스톤이 캘린더에 표시돼요.</p>
+                `;
+            })()}
           </section>
           <section class="layer-panel">
             <p class="panel-label">표시할 일정</p>
@@ -1269,10 +1184,13 @@ function renderCalendar() {
               </div>
             ` : ''}
           </section>
+          <section class="company-panel-section">
+            <p class="panel-label">관심 기업 추가하기</p>
+            ${renderCompanyPanel()}
+          </section>
           <section class="roadmap">
             <p class="panel-label">추천 자격증</p>
-          ${renderCertificatePlan()}
-          ${renderCompanyPanel()}
+            ${renderCertificatePlan()}
           </section>
           <section class="quick-add">
             <p class="panel-label">일정 추가</p>
@@ -1307,6 +1225,16 @@ function renderCalendar() {
       const cert = getCertificateRecommendations().find(item => String(item.rank) === String(button.dataset.cert));
       if (!cert) return;
       activeCertificatePicker = activeCertificatePicker?.rank === cert.rank ? null : cert.rank;
+      renderCalendar();
+    });
+  });
+
+  document.querySelectorAll('[data-cert-library]').forEach(button => {
+    button.addEventListener('click', () => {
+      const cert = getCertificateRecommendations().find(item => String(item.rank) === String(button.dataset.certLibrary));
+      if (!cert) return;
+      activeCertificateLibraryRank = cert.rank;
+      activeCertificatePicker = cert.rank;
       renderCalendar();
     });
   });
@@ -1474,17 +1402,39 @@ function renderCalendar() {
 
 function renderCertificatePlan() {
   const recommendations = getCertificateRecommendations();
+  const activeLibraryCert = recommendations.find(cert => String(cert.rank) === String(activeCertificateLibraryRank)) || null;
 
   return `
-    <section class="planner-card">
-      <div class="planner-card-head">
-        <div>
-          <p class="panel-label">자격증 로드맵</p>
-          <strong>내 캘린더 추가하기</strong>
+    <div class="certificate-list">
+      <details class="certificate-library">
+        <summary>자격증 리스트 보기</summary>
+        <div class="certificate-library-list">
+          ${recommendations.map(cert => `
+            <button class="certificate-library-item ${activeLibraryCert?.rank === cert.rank ? 'active' : ''}" type="button" data-cert-library="${cert.rank}">
+              <strong>${escapeHtml(cert.name)}</strong>
+              <span>${escapeHtml(cert.rank)}순위</span>
+            </button>
+          `).join('')}
         </div>
-        <span class="planner-toggle-hint">토글로 펼쳐보기</span>
-      </div>
-      <div class="certificate-list">
+      </details>
+      ${activeLibraryCert ? `
+        <div class="certificate-selected-preview">
+          <p class="panel-label">선택한 자격증</p>
+          <div class="certificate-card preview-card ${activeCertificatePicker === activeLibraryCert.rank ? 'expanded' : ''}">
+            <div class="certificate-head">
+              <span class="priority">${activeLibraryCert.rank}순위</span>
+              <strong>${escapeHtml(activeLibraryCert.name)}</strong>
+              <small>${escapeHtml(getCertificatePriorityCompanies(activeLibraryCert.name).join(', '))}</small>
+            </div>
+            <div class="certificate-body">
+              <p>${escapeHtml(activeLibraryCert.description)}</p>
+              <button class="secondary-button" type="button" data-cert="${activeLibraryCert.rank}" aria-expanded="${activeCertificatePicker === activeLibraryCert.rank ? 'true' : 'false'}">내 캘린더 추가하기</button>
+              ${activeCertificatePicker === activeLibraryCert.rank ? renderCertificatePicker(activeLibraryCert) : ''}
+              ${activeCertificatePicker === activeLibraryCert.rank ? '<p class="picker-hint">선택하면 일정이 바로 캘린더에 추가돼요.</p>' : ''}
+            </div>
+          </div>
+        </div>
+      ` : ''}
       <form id="certificate-search-form" class="company-search certificate-search">
         <input id="certificate-search-input" type="search" placeholder="자격증 검색해서 추가" maxlength="40" />
         <button class="secondary-button" type="submit">추가</button>
@@ -1504,20 +1454,16 @@ function renderCertificatePlan() {
           </div>
         </div>
       `).join('')}
-      </div>
-    </section>
+    </div>
   `;
 }
 
 function renderCompanyPanel() {
   const recommendations = getCompanyRecommendations();
   return `
-    <section class="planner-card company-panel">
-      <div class="planner-card-head">
-        <div>
-          <p class="panel-label">관심 기업 추가하기</p>
-          <strong>선택 직무의 유망 기업</strong>
-        </div>
+    <section class="company-panel">
+      <div class="company-panel-head">
+        <strong>선택 직무의 유망 기업</strong>
       </div>
       <div class="company-list">
         ${recommendations.map((company, index) => `
@@ -1620,6 +1566,15 @@ function addCompanySchedule(companyName) {
   if (!selectedCompanies.includes(companyName)) {
     selectedCompanies.unshift(companyName);
     saveSelectedCompanies();
+  }
+  const monthDates = monthRange(today, targetSeasonDate());
+  const deadlineMonthIndex = monthDates.findIndex(monthDate => {
+    const deadline = addDays(targetSeasonDate(), -21);
+    return monthDate.getFullYear() === deadline.getFullYear() && monthDate.getMonth() === deadline.getMonth();
+  });
+  if (deadlineMonthIndex >= 0) {
+    calendarViewIndex = deadlineMonthIndex;
+    localStorage.setItem('chwippo-calendar-view', String(calendarViewIndex));
   }
   trackEvent('company_schedule_added', { company: companyName, source: found ? 'recommendation' : 'search' });
   renderCalendar();
