@@ -261,6 +261,8 @@ let activeCertificateLibraryName = null;
 let toastTimer = null;
 let toastMessage = '';
 let activeCertificateGoalEditor = null;
+let companyManualFormOpen = false;
+let sidebarWidth = 300;
 
 function getSessionId() {
   let id = sessionStorage.getItem('chwippo-session-id');
@@ -399,8 +401,10 @@ function getGoalProgressText() {
 }
 
 function getCompanyDdayList() {
+  const events = getCompanyEvents();
   return selectedCompanies.map(company => {
-    const deadline = addDays(targetSeasonDate(), -21 - (hashCode(company) % 14));
+    const deadlineEvent = events.find(event => event.companyName === company && event.layer === 'recruitment');
+    const deadline = deadlineEvent ? deadlineEvent.start : addDays(targetSeasonDate(), -21);
     return {
       company,
       days: Math.max(0, Math.ceil((deadline - today) / (1000 * 60 * 60 * 24))),
@@ -619,6 +623,10 @@ function removeCertificateSchedule(certName) {
   renderCalendar();
 }
 
+function getUniqueCompanyList() {
+  return Object.values(COMPANY_RECOMMENDATIONS).flat();
+}
+
 function getCompanyRecommendations() {
   const companies = COMPANY_RECOMMENDATIONS[state.track] || COMPANY_RECOMMENDATIONS['국내 대기업'];
   if (!state.job) return companies;
@@ -630,16 +638,32 @@ function getCompanyRecommendations() {
   });
 }
 
-function buildCompanyEvent(companyName, index, source = 'recommendation') {
-  const deadline = addDays(targetSeasonDate(), -21);
+function buildCompanyEvent(companyName, index, source = 'recommendation', manualDates = null) {
   const order = index + 1;
-  const offset = hashCode(companyName) % 16;
-  const applicationStart = deadline;
-  const applicationEnd = deadline;
-  const resumeEnd = addDays(applicationStart, -1);
-  const resumeStart = addDays(resumeEnd, -18 - (offset % 4));
-  const aptitudeStart = addDays(applicationStart, -2 - (offset % 3));
-  const aptitudeEnd = addDays(aptitudeStart, 9 + (order % 3));
+  let applicationStart;
+  let applicationEnd;
+  let resumeStart;
+  let resumeEnd;
+  let aptitudeStart;
+  let aptitudeEnd;
+
+  if (manualDates) {
+    applicationStart = manualDates.deadline;
+    applicationEnd = manualDates.deadline;
+    resumeStart = manualDates.resumeStart;
+    resumeEnd = manualDates.resumeEnd;
+    aptitudeStart = manualDates.aptitudeStart;
+    aptitudeEnd = manualDates.aptitudeEnd;
+  } else {
+    const deadline = addDays(targetSeasonDate(), -21);
+    const offset = hashCode(companyName) % 16;
+    applicationStart = deadline;
+    applicationEnd = deadline;
+    resumeEnd = addDays(applicationStart, -1);
+    resumeStart = addDays(resumeEnd, -18 - (offset % 4));
+    aptitudeStart = addDays(applicationStart, -2 - (offset % 3));
+    aptitudeEnd = addDays(aptitudeStart, 9 + (order % 3));
+  }
 
   return {
     id: `company-${source}-${companyName}-${order}`.replace(/\s+/g, '-'),
@@ -648,7 +672,9 @@ function buildCompanyEvent(companyName, index, source = 'recommendation') {
     end: applicationEnd,
     layer: 'recruitment',
     kind: '서류 마감',
-    detail: `${companyName} 서류 마감일을 기준으로 자소서 마일스톤과 인적성 준비 구간을 역산했어요.`,
+    detail: manualDates
+      ? `${companyName} 서류 마감일과 준비 일정을 직접 입력했어요.`
+      : `${companyName} 서류 마감일을 기준으로 자소서 마일스톤과 인적성 준비 구간을 역산했어요.`,
     companyName,
     companySource: source,
     companySchedule: {
@@ -663,7 +689,7 @@ function buildCompanyEvent(companyName, index, source = 'recommendation') {
 }
 
 function getCompanyEvents() {
-  const searchEvents = customCompanyEvents.map(item => buildCompanyEvent(item.name, item.order || 0, 'search'));
+  const searchEvents = customCompanyEvents.map(item => buildCompanyEvent(item.name, item.order || 0, item.manualDates ? 'manual' : 'search', item.manualDates || null));
   const unique = new Map();
 
   searchEvents.forEach(event => {
@@ -680,7 +706,9 @@ function getCompanyEvents() {
       end: event.companySchedule.resumeEnd,
       layer: 'resume',
       kind: '자소서 마일스톤',
-      detail: `${event.companyName} 서류 마감일을 기준으로 역산한 자소서 마일스톤입니다.`,
+      detail: event.companySource === 'manual'
+        ? `${event.companyName} 직접 입력한 서류 준비 기간입니다.`
+        : `${event.companyName} 서류 마감일을 기준으로 역산한 자소서 마일스톤입니다.`,
       eventLabel: `${event.companyName} 자소서 마일스톤`,
       companyName: event.companyName,
       companySource: event.companySource,
@@ -692,7 +720,9 @@ function getCompanyEvents() {
       end: event.companySchedule.aptitudeEnd,
       layer: 'aptitude',
       kind: '인적성 준비',
-      detail: `${event.companyName} 서류 마감일을 기준으로 역산한 인적성 준비 구간입니다.`,
+      detail: event.companySource === 'manual'
+        ? `${event.companyName} 직접 입력한 인적성 준비 구간입니다.`
+        : `${event.companyName} 서류 마감일을 기준으로 역산한 인적성 준비 구간입니다.`,
       eventLabel: `${event.companyName} 인적성 준비 기간`,
       companyName: event.companyName,
       companySource: event.companySource,
@@ -704,7 +734,7 @@ function getCompanyEvents() {
       end: event.companySchedule.applicationEnd,
       layer: 'recruitment',
       kind: '서류 마감',
-      detail: `${event.companyName} 서류접수 기간입니다.`,
+      detail: event.detail,
       eventLabel: `${event.companyName} 서류 마감`,
       companyName: event.companyName,
       companySource: event.companySource,
@@ -1109,7 +1139,7 @@ function renderCalendar() {
           ` : ''}
         </div>
       ` : ''}
-      <div class="calendar-layout">
+      <div class="calendar-layout" id="calendar-layout" style="--sidebar-width:${sidebarWidth}px">
         <aside>
           <section class="next-task">
             <p class="panel-label">오늘의 한 걸음</p>
@@ -1152,6 +1182,7 @@ function renderCalendar() {
           </section>
           ${quoteCardMarkup()}
         </aside>
+        <div class="sidebar-resize-handle" id="sidebar-resize-handle" role="separator" aria-orientation="vertical" aria-label="사이드바 너비 조절"></div>
         <main class="month-stack">
           ${renderMonthView(visibleMonth, events, calendarViewIndex, monthDates.length)}
         </main>
@@ -1237,15 +1268,56 @@ function renderCalendar() {
     });
   });
 
-  const companySearchForm = document.querySelector('#company-search-form');
-  if (companySearchForm) {
-    companySearchForm.addEventListener('submit', event => {
-      event.preventDefault();
-      const input = document.querySelector('#company-search-input');
-      const company = input.value.trim();
+  const companyLibrarySelect = document.querySelector('#company-library-select');
+  if (companyLibrarySelect) {
+    companyLibrarySelect.addEventListener('change', event => {
+      const company = event.target.value;
       if (!company) return;
       addCompanySchedule(company);
-      input.value = '';
+    });
+  }
+
+  const companyManualToggle = document.querySelector('#company-manual-toggle');
+  if (companyManualToggle) {
+    companyManualToggle.addEventListener('click', () => {
+      companyManualFormOpen = !companyManualFormOpen;
+      renderCalendar();
+    });
+  }
+
+  const companyManualForm = document.querySelector('#company-manual-form');
+  if (companyManualForm) {
+    companyManualForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const name = document.querySelector('#company-manual-name').value.trim();
+      const deadline = document.querySelector('#company-manual-deadline').value;
+      const resumeStart = document.querySelector('#company-manual-resume-start').value;
+      const resumeEnd = document.querySelector('#company-manual-resume-end').value;
+      const aptitudeStart = document.querySelector('#company-manual-aptitude-start').value;
+      const aptitudeEnd = document.querySelector('#company-manual-aptitude-end').value;
+      addCompanyScheduleWithDates(name, deadline, resumeStart, resumeEnd, aptitudeStart, aptitudeEnd);
+    });
+  }
+
+  const sidebarResizeHandle = document.querySelector('#sidebar-resize-handle');
+  const calendarLayoutEl = document.querySelector('#calendar-layout');
+  if (sidebarResizeHandle && calendarLayoutEl) {
+    sidebarResizeHandle.addEventListener('mousedown', event => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = sidebarWidth;
+
+      const onMouseMove = moveEvent => {
+        sidebarWidth = Math.max(240, Math.min(520, startWidth + (moveEvent.clientX - startX)));
+        calendarLayoutEl.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
   }
 
@@ -1438,22 +1510,62 @@ function renderCertificatePlan() {
 
 function renderCompanyPanel() {
   const recommendations = getCompanyRecommendations();
+  const recommendationNames = new Set(recommendations.map(company => company.name));
+  const allCompanies = getUniqueCompanyList();
+  const extraSelected = selectedCompanies
+    .filter(name => !recommendationNames.has(name))
+    .map(name => allCompanies.find(company => company.name === name) || { name, style: 'brand' });
+  const pillList = [...recommendations, ...extraSelected];
+
   return `
     <section class="company-panel">
+      <select id="company-library-select" class="certificate-library-select">
+        <option value="">전체 기업에서 선택하기</option>
+        ${Object.entries(COMPANY_RECOMMENDATIONS).map(([track, companies]) => `
+          <optgroup label="${escapeHtml(track)}">
+            ${companies.map(company => `<option value="${escapeHtml(company.name)}">${escapeHtml(company.name)}</option>`).join('')}
+          </optgroup>
+        `).join('')}
+      </select>
       <div class="company-panel-head">
-        <strong>선택 직무의 유망 기업</strong>
+        <strong>유망 기업</strong>
       </div>
       <div class="company-list">
-        ${recommendations.map((company, index) => `
+        ${pillList.map((company, index) => `
           <button class="company-pill ${company.style} ${selectedCompanies.includes(company.name) ? 'selected' : ''}" type="button" data-company="${escapeHtml(company.name)}" data-order="${index}">
             ${escapeHtml(company.name)}
           </button>
         `).join('')}
       </div>
-      <form id="company-search-form" class="company-search">
-        <input id="company-search-input" type="search" placeholder="직접 기업 검색해서 추가" maxlength="30" />
-        <button class="secondary-button" type="submit">추가</button>
-      </form>
+      <button class="link-button" type="button" id="company-manual-toggle">
+        ${companyManualFormOpen ? '기업 직접 입력하기 닫기' : '기업 직접 입력하기'}
+      </button>
+      ${companyManualFormOpen ? `
+        <form id="company-manual-form" class="company-manual-form">
+          <input id="company-manual-name" type="text" placeholder="기업명" maxlength="30" required />
+          <label class="company-manual-field">
+            서류 지원 마감
+            <input id="company-manual-deadline" type="date" required />
+          </label>
+          <label class="company-manual-field">
+            서류 준비
+            <span class="date-range-inputs">
+              <input id="company-manual-resume-start" type="date" required />
+              <span>~</span>
+              <input id="company-manual-resume-end" type="date" required />
+            </span>
+          </label>
+          <label class="company-manual-field">
+            인적성 준비
+            <span class="date-range-inputs">
+              <input id="company-manual-aptitude-start" type="date" required />
+              <span>~</span>
+              <input id="company-manual-aptitude-end" type="date" required />
+            </span>
+          </label>
+          <button class="primary-button compact" type="submit">추가</button>
+        </form>
+      ` : ''}
     </section>
   `;
 }
@@ -1545,6 +1657,39 @@ function toggleCompanySchedule(companyName) {
   } else {
     addCompanySchedule(companyName);
   }
+}
+
+function addCompanyScheduleWithDates(companyName, deadlineValue, resumeStartValue, resumeEndValue, aptitudeStartValue, aptitudeEndValue) {
+  const trimmed = String(companyName || '').trim();
+  if (!trimmed || !deadlineValue || !resumeStartValue || !resumeEndValue || !aptitudeStartValue || !aptitudeEndValue) return;
+
+  const toDate = value => new Date(`${value}T12:00:00`);
+  const manualDates = {
+    deadline: toDate(deadlineValue),
+    resumeStart: toDate(resumeStartValue),
+    resumeEnd: toDate(resumeEndValue),
+    aptitudeStart: toDate(aptitudeStartValue),
+    aptitudeEnd: toDate(aptitudeEndValue),
+  };
+
+  const recommendations = getCompanyRecommendations();
+  const found = recommendations.find(item => item.name === trimmed);
+  const index = found ? recommendations.indexOf(found) : 0;
+
+  const storedIndex = customCompanyEvents.findIndex(item => item.name === trimmed);
+  if (storedIndex >= 0) customCompanyEvents.splice(storedIndex, 1);
+  customCompanyEvents.unshift({ name: trimmed, order: index, manualDates });
+
+  if (!selectedCompanies.includes(trimmed)) {
+    selectedCompanies.unshift(trimmed);
+  }
+  layerState.recruitment = true;
+  layerState.aptitude = true;
+  layerState.resume = true;
+  companyManualFormOpen = false;
+  trackEvent('company_schedule_added_manual', { company: trimmed });
+  showToast(`${trimmed} 일정이 직접 입력한 날짜로 캘린더에 추가되었어요.`);
+  renderCalendar();
 }
 
 function toDateInputValue(date) {

@@ -419,7 +419,7 @@ a{
 
 .calendar-layout{
   display:grid;
-  grid-template-columns:300px minmax(0,1fr);
+  grid-template-columns:var(--sidebar-width, 300px) 6px minmax(0,1fr);
   align-items:start;
 }
 
@@ -431,6 +431,30 @@ aside{
   padding:22px 18px 26px;
   border-right:1px solid var(--border);
   background:var(--surface);
+  min-width:0;
+}
+
+.sidebar-resize-handle{
+  position:relative;
+  align-self:stretch;
+  cursor:col-resize;
+  background:transparent;
+}
+
+.sidebar-resize-handle::after{
+  content:'';
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:2px;
+  width:2px;
+  border-radius:2px;
+  background:var(--border);
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:active::after{
+  background:var(--accent);
 }
 
 .panel-label{
@@ -758,20 +782,63 @@ aside{
   font-weight:700;
 }
 
-.company-search{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:8px;
-  margin-top:12px;
+.link-button{
+  margin-top:10px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--accent);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
 }
 
-.company-search input{
+.link-button:hover{
+  text-decoration:underline;
+}
+
+.company-manual-form{
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface-soft);
+}
+
+.company-manual-form input[type="text"]{
   width:100%;
   padding:10px 12px;
   border:1px solid #dbe2ec;
   border-radius:6px;
   background:#fff;
   color:var(--ink);
+}
+
+.company-manual-field{
+  display:grid;
+  gap:6px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+}
+
+.date-range-inputs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.date-range-inputs input{
+  flex:1;
+  min-width:0;
+  padding:8px 10px;
+  border:1px solid #dbe2ec;
+  border-radius:6px;
+  background:#fff;
+  color:var(--ink);
+  font-weight:400;
 }
 
 .event-form input,
@@ -1400,6 +1467,10 @@ aside{
 @media (max-width: 960px){
   .calendar-layout{
     grid-template-columns:1fr;
+  }
+
+  .sidebar-resize-handle{
+    display:none;
   }
 
   aside{
