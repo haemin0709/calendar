@@ -723,10 +723,10 @@ aside{
 }
 
 .company-pill.selected{
-  background:#eceff4;
-  color:#7e8591;
-  border-color:#d3d9e3;
-  text-decoration:line-through;
+  background:var(--accent-soft);
+  color:var(--accent-strong);
+  border-color:var(--accent);
+  font-weight:700;
 }
 
 .company-pill.brand{ background:#f8fbff; }

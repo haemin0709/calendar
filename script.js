@@ -1243,7 +1243,7 @@ function renderCalendar() {
   document.querySelectorAll('[data-company]').forEach(button => {
     button.addEventListener('click', () => {
       const company = button.dataset.company;
-      addCompanySchedule(company);
+      toggleCompanySchedule(company);
     });
   });
 
@@ -1523,6 +1523,23 @@ function addCompanySchedule(companyName) {
   }
   trackEvent('company_schedule_added', { company: companyName, source: found ? 'recommendation' : 'search' });
   renderCalendar();
+}
+
+function removeCompanySchedule(companyName) {
+  const selectedIndex = selectedCompanies.indexOf(companyName);
+  if (selectedIndex >= 0) selectedCompanies.splice(selectedIndex, 1);
+  const customIndex = customCompanyEvents.findIndex(item => item.name === companyName);
+  if (customIndex >= 0) customCompanyEvents.splice(customIndex, 1);
+  trackEvent('company_schedule_removed', { company: companyName });
+  renderCalendar();
+}
+
+function toggleCompanySchedule(companyName) {
+  if (selectedCompanies.includes(companyName)) {
+    removeCompanySchedule(companyName);
+  } else {
+    addCompanySchedule(companyName);
+  }
 }
 
 function toDateInputValue(date) {
