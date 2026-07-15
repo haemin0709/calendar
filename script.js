@@ -757,8 +757,8 @@ function getCustomEvents() {
   return customEvents.map(event => ({
     ...event,
     custom: true,
-    start: new Date(`${event.start}T12:00:00`),
-    end: new Date(`${event.end || event.start}T12:00:00`),
+    start: event.start instanceof Date ? event.start : new Date(`${event.start}T12:00:00`),
+    end: event.end instanceof Date ? event.end : new Date(`${event.end || event.start}T12:00:00`),
   }));
 }
 
@@ -1358,7 +1358,7 @@ function renderCertificatePlan() {
       <select id="certificate-library-select" class="certificate-library-select">
         <option value="">자격증을 선택하세요</option>
         ${allCertificates.map(cert => `
-          <option value="${escapeHtml(cert.name)}" ${activeLibraryCert?.name === cert.name ? 'selected' : ''}>${escapeHtml(cert.name)} (${escapeHtml(cert.rank)}순위)</option>
+          <option value="${escapeHtml(cert.name)}" ${activeLibraryCert?.name === cert.name ? 'selected' : ''}>${escapeHtml(cert.name)}</option>
         `).join('')}
       </select>
       ${activeLibraryCert ? `
