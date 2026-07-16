@@ -1096,6 +1096,8 @@ function renderCalendar() {
     return monthEvents.some(event => event.layer === 'recruitment');
   });
 
+  const previousAsideScrollTop = document.querySelector('aside')?.scrollTop ?? 0;
+
   app.innerHTML = `
     <div class="calendar-app">
       <header class="calendar-header">
@@ -1192,6 +1194,9 @@ function renderCalendar() {
       ${toastMessage ? `<div class="toast" role="status" aria-live="polite">${escapeHtml(toastMessage)}</div>` : ''}
     </div>
   `;
+
+  const newAsideEl = document.querySelector('aside');
+  if (newAsideEl) newAsideEl.scrollTop = previousAsideScrollTop;
 
   document.querySelector('#edit-goal').addEventListener('click', () => {
     location.hash = '#/';
