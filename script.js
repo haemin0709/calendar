@@ -247,6 +247,10 @@ let sidebarSectionsOpen = {
   quickAdd: false,
 };
 let sidebarWidth = 300;
+let pendingCompanyAdd = null;
+let pendingCompanyAddMode = 'preview';
+let pendingCertificateAdd = null;
+let pendingCertificateAddMode = 'preview';
 
 function getSessionId() {
   let id = sessionStorage.getItem('chwippo-session-id');
@@ -498,6 +502,13 @@ function getCertificateRoundOptions(cert) {
   });
 }
 
+function getCertificateRoundPreview(certName, round) {
+  const cert = findCertificateByName(certName);
+  if (!cert) return null;
+  const options = getCertificateRoundOptions(cert);
+  return options.find(item => item.round === Number(round)) || options[0];
+}
+
 function addCertificateSchedule(certName, round = 1) {
   const cert = findCertificateByName(certName);
   if (!cert) return;
@@ -568,6 +579,87 @@ function addCertificateSchedule(certName, round = 1) {
   trackEvent('certificate_schedule_added', { rank: cert.rank, name: cert.name, round: selectedRound.round });
   activeCertificatePicker = null;
   showToast(`${formatMonthLabel(selectedRound.examDate)} ${selectedRound.examDate.getDate()}일 ${selectedRound.round}회차 ${cert.name} 자격증 일정이 캘린더에 추가되었어요.`);
+  renderCalendar();
+}
+
+function addCertificateScheduleWithDates(certName, round, prepStartValue, prepEndValue, applyValue, examValue, resultValue) {
+  const cert = findCertificateByName(certName);
+  if (!cert || !prepStartValue || !prepEndValue || !applyValue || !examValue || !resultValue) return;
+
+  const toDate = value => new Date(`${value}T12:00:00`);
+  const prepStart = toDate(prepStartValue);
+  const prepEnd = toDate(prepEndValue);
+  const applyDate = toDate(applyValue);
+  const examDate = toDate(examValue);
+  const resultDate = toDate(resultValue);
+  const roundNumber = Number(round) || 1;
+
+  const certEvents = [
+    {
+      id: `cert-${Date.now()}-${cert.rank}-${roundNumber}-prep`,
+      title: `${cert.name} ${roundNumber}회차 시험 준비`,
+      start: prepStart,
+      end: prepEnd,
+      layer: 'certificatePrep',
+      kind: '자격증',
+      detail: `${cert.description} 준비 ${formatRange(prepStart, prepEnd)}`,
+      markerLabel: '준비',
+      eventLabel: cert.name,
+      certName: cert.name,
+      certRound: roundNumber,
+    },
+    {
+      id: `cert-${Date.now()}-${cert.rank}-${roundNumber}-apply`,
+      title: `${cert.name} ${roundNumber}회차 접수 마감`,
+      start: applyDate,
+      end: applyDate,
+      layer: 'certificateApply',
+      kind: '자격증',
+      detail: `접수 마감 ${formatRange(applyDate, applyDate)}`,
+      markerLabel: '접수',
+      eventLabel: cert.name,
+      certName: cert.name,
+      certRound: roundNumber,
+    },
+    {
+      id: `cert-${Date.now()}-${cert.rank}-${roundNumber}-exam`,
+      title: `${cert.name} ${roundNumber}회차 시험`,
+      start: examDate,
+      end: examDate,
+      layer: 'certificateExam',
+      kind: '자격증',
+      detail: `시험 ${formatRange(examDate, examDate)}`,
+      markerLabel: '시험',
+      eventLabel: cert.name,
+      certName: cert.name,
+      certRound: roundNumber,
+    },
+    {
+      id: `cert-${Date.now()}-${cert.rank}-${roundNumber}-result`,
+      title: `${cert.name} ${roundNumber}회차 결과 발표`,
+      start: resultDate,
+      end: resultDate,
+      layer: 'certificateResult',
+      kind: '자격증',
+      detail: `결과 발표 ${formatRange(resultDate, resultDate)} · 직접 입력한 날짜예요.`,
+      markerLabel: '발표',
+      eventLabel: cert.name,
+      certName: cert.name,
+      certRound: roundNumber,
+    },
+  ];
+
+  customEvents.unshift(...certEvents);
+  if (!selectedCertificates.includes(cert.name)) {
+    selectedCertificates.unshift(cert.name);
+  }
+  layerState.certificatePrep = true;
+  layerState.certificateApply = true;
+  layerState.certificateExam = true;
+  layerState.certificateResult = true;
+  activeCertificatePicker = null;
+  trackEvent('certificate_schedule_added_manual', { name: cert.name, round: roundNumber });
+  showToast(`${cert.name} ${roundNumber}회차 일정이 직접 입력한 날짜로 캘린더에 추가되었어요.`);
   renderCalendar();
 }
 
@@ -647,6 +739,13 @@ function buildCompanyEvent(companyName, index, source = 'recommendation', manual
       resumeEnd,
     },
   };
+}
+
+function getCompanySchedulePreview(companyName) {
+  const recommendations = getCompanyRecommendations();
+  const found = recommendations.find(item => item.name === companyName);
+  const index = found ? recommendations.indexOf(found) : 0;
+  return buildCompanyEvent(companyName, index, 'recommendation').companySchedule;
 }
 
 function getCompanyEvents() {
@@ -1132,6 +1231,8 @@ function renderCalendar() {
       </div>
       <div class="detail" id="detail" hidden></div>
       ${activeCertificateGoalEditor ? renderCertificateGoalEditor(activeCertificateGoalEditor) : ''}
+      ${renderCompanyAddModal()}
+      ${renderCertificateAddModal()}
       ${toastMessage ? `<div class="toast" role="status" aria-live="polite">${escapeHtml(toastMessage)}</div>` : ''}
     </div>
   `;
@@ -1164,7 +1265,9 @@ function renderCalendar() {
 
   document.querySelectorAll('[data-cert-round]').forEach(button => {
     button.addEventListener('click', () => {
-      addCertificateSchedule(button.dataset.cert, button.dataset.certRound);
+      pendingCertificateAdd = { certName: button.dataset.cert, round: Number(button.dataset.certRound) };
+      pendingCertificateAddMode = 'preview';
+      renderCalendar();
     });
   });
 
@@ -1200,6 +1303,90 @@ function renderCalendar() {
     });
   }
 
+  const companyAddModal = document.querySelector('#company-add-modal');
+  if (companyAddModal) {
+    companyAddModal.addEventListener('click', event => {
+      if (event.target === companyAddModal) {
+        pendingCompanyAdd = null;
+        pendingCompanyAddMode = 'preview';
+        renderCalendar();
+      }
+    });
+    companyAddModal.querySelector('[data-company-modal-close]')?.addEventListener('click', () => {
+      pendingCompanyAdd = null;
+      pendingCompanyAddMode = 'preview';
+      renderCalendar();
+    });
+    companyAddModal.querySelector('[data-company-modal-manual]')?.addEventListener('click', () => {
+      pendingCompanyAddMode = 'manual';
+      renderCalendar();
+    });
+    companyAddModal.querySelector('[data-company-modal-back]')?.addEventListener('click', () => {
+      pendingCompanyAddMode = 'preview';
+      renderCalendar();
+    });
+    companyAddModal.querySelector('[data-company-modal-confirm]')?.addEventListener('click', () => {
+      const name = pendingCompanyAdd.name;
+      pendingCompanyAdd = null;
+      pendingCompanyAddMode = 'preview';
+      addCompanySchedule(name);
+    });
+    companyAddModal.querySelector('#company-add-manual-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      const deadline = document.querySelector('#company-add-deadline').value;
+      const resumeStart = document.querySelector('#company-add-resume-start').value;
+      const resumeEnd = document.querySelector('#company-add-resume-end').value;
+      const aptitudeStart = document.querySelector('#company-add-aptitude-start').value;
+      const aptitudeEnd = document.querySelector('#company-add-aptitude-end').value;
+      const name = pendingCompanyAdd.name;
+      pendingCompanyAdd = null;
+      pendingCompanyAddMode = 'preview';
+      addCompanyScheduleWithDates(name, deadline, resumeStart, resumeEnd, aptitudeStart, aptitudeEnd);
+    });
+  }
+
+  const certificateAddModal = document.querySelector('#certificate-add-modal');
+  if (certificateAddModal) {
+    certificateAddModal.addEventListener('click', event => {
+      if (event.target === certificateAddModal) {
+        pendingCertificateAdd = null;
+        pendingCertificateAddMode = 'preview';
+        renderCalendar();
+      }
+    });
+    certificateAddModal.querySelector('[data-cert-modal-close]')?.addEventListener('click', () => {
+      pendingCertificateAdd = null;
+      pendingCertificateAddMode = 'preview';
+      renderCalendar();
+    });
+    certificateAddModal.querySelector('[data-cert-modal-manual]')?.addEventListener('click', () => {
+      pendingCertificateAddMode = 'manual';
+      renderCalendar();
+    });
+    certificateAddModal.querySelector('[data-cert-modal-back]')?.addEventListener('click', () => {
+      pendingCertificateAddMode = 'preview';
+      renderCalendar();
+    });
+    certificateAddModal.querySelector('[data-cert-modal-confirm]')?.addEventListener('click', () => {
+      const { certName, round } = pendingCertificateAdd;
+      pendingCertificateAdd = null;
+      pendingCertificateAddMode = 'preview';
+      addCertificateSchedule(certName, round);
+    });
+    certificateAddModal.querySelector('#certificate-add-manual-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      const prepStart = document.querySelector('#certificate-add-prep-start').value;
+      const prepEnd = document.querySelector('#certificate-add-prep-end').value;
+      const applyDate = document.querySelector('#certificate-add-apply').value;
+      const examDate = document.querySelector('#certificate-add-exam').value;
+      const resultDate = document.querySelector('#certificate-add-result').value;
+      const { certName, round } = pendingCertificateAdd;
+      pendingCertificateAdd = null;
+      pendingCertificateAddMode = 'preview';
+      addCertificateScheduleWithDates(certName, round, prepStart, prepEnd, applyDate, examDate, resultDate);
+    });
+  }
+
   document.querySelectorAll('[data-cert-close]').forEach(button => {
     button.addEventListener('click', () => {
       activeCertificatePicker = null;
@@ -1219,7 +1406,9 @@ function renderCalendar() {
     companyLibrarySelect.addEventListener('change', event => {
       const company = event.target.value;
       if (!company) return;
-      addCompanySchedule(company);
+      pendingCompanyAdd = { name: company };
+      pendingCompanyAddMode = 'preview';
+      renderCalendar();
     });
   }
 
@@ -1494,7 +1683,8 @@ function renderCompanyPanel() {
           </button>
         `).join('')}
       </div>
-      <button class="link-button" type="button" id="company-manual-toggle">
+      <button class="company-manual-toggle" type="button" id="company-manual-toggle" aria-expanded="${companyManualFormOpen ? 'true' : 'false'}">
+        <span class="toggle-plus">${companyManualFormOpen ? '−' : '+'}</span>
         ${companyManualFormOpen ? '기업 직접 입력하기 닫기' : '기업 직접 입력하기'}
       </button>
       ${companyManualFormOpen ? `
@@ -1573,6 +1763,138 @@ function renderCertificateGoalEditor(certName) {
   `;
 }
 
+function renderCompanyAddModal() {
+  if (!pendingCompanyAdd) return '';
+  const { name } = pendingCompanyAdd;
+  const schedule = getCompanySchedulePreview(name);
+
+  if (pendingCompanyAddMode === 'manual') {
+    return `
+      <div class="modal-overlay" id="company-add-modal" role="dialog" aria-modal="true">
+        <div class="modal-panel">
+          <div class="modal-head">
+            <strong>${escapeHtml(name)} 일정 직접 설정</strong>
+            <button class="modal-close" type="button" data-company-modal-close aria-label="닫기">×</button>
+          </div>
+          <form id="company-add-manual-form" class="company-manual-form">
+            <label class="company-manual-field">
+              서류 지원 마감
+              <input id="company-add-deadline" type="date" value="${toDateInputValue(schedule.applicationStart)}" required />
+            </label>
+            <label class="company-manual-field">
+              서류 준비
+              <span class="date-range-inputs">
+                <input id="company-add-resume-start" type="date" value="${toDateInputValue(schedule.resumeStart)}" required />
+                <span>~</span>
+                <input id="company-add-resume-end" type="date" value="${toDateInputValue(schedule.resumeEnd)}" required />
+              </span>
+            </label>
+            <label class="company-manual-field">
+              인적성 준비
+              <span class="date-range-inputs">
+                <input id="company-add-aptitude-start" type="date" value="${toDateInputValue(schedule.aptitudeStart)}" required />
+                <span>~</span>
+                <input id="company-add-aptitude-end" type="date" value="${toDateInputValue(schedule.aptitudeEnd)}" required />
+              </span>
+            </label>
+            <div class="modal-actions">
+              <button class="secondary-button" type="button" data-company-modal-back>뒤로</button>
+              <button class="primary-button compact" type="submit">추가</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="modal-overlay" id="company-add-modal" role="dialog" aria-modal="true">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <strong>${escapeHtml(name)} 일정이 이렇게 계산됐어요</strong>
+          <button class="modal-close" type="button" data-company-modal-close aria-label="닫기">×</button>
+        </div>
+        <p class="modal-desc">서류 마감일(${formatKoreanDate(schedule.applicationStart)}) 기준으로 역산했어요.</p>
+        <ul class="modal-summary-list">
+          <li><span>자소서 준비</span><strong>${formatKoreanDate(schedule.resumeStart)}부터 시작</strong></li>
+          <li><span>인적성 준비</span><strong>${formatRange(schedule.aptitudeStart, schedule.aptitudeEnd)}</strong></li>
+        </ul>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-company-modal-manual>직접 설정할게요</button>
+          <button class="primary-button compact" type="button" data-company-modal-confirm>그대로 할게요</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCertificateAddModal() {
+  if (!pendingCertificateAdd) return '';
+  const { certName, round } = pendingCertificateAdd;
+  const preview = getCertificateRoundPreview(certName, round);
+  if (!preview) return '';
+
+  if (pendingCertificateAddMode === 'manual') {
+    return `
+      <div class="modal-overlay" id="certificate-add-modal" role="dialog" aria-modal="true">
+        <div class="modal-panel">
+          <div class="modal-head">
+            <strong>${escapeHtml(certName)} 일정 직접 설정</strong>
+            <button class="modal-close" type="button" data-cert-modal-close aria-label="닫기">×</button>
+          </div>
+          <form id="certificate-add-manual-form" class="company-manual-form">
+            <label class="company-manual-field">
+              시험 준비
+              <span class="date-range-inputs">
+                <input id="certificate-add-prep-start" type="date" value="${toDateInputValue(preview.prepStart)}" required />
+                <span>~</span>
+                <input id="certificate-add-prep-end" type="date" value="${toDateInputValue(preview.prepEnd)}" required />
+              </span>
+            </label>
+            <label class="company-manual-field">
+              접수 마감
+              <input id="certificate-add-apply" type="date" value="${toDateInputValue(preview.applicationStart)}" required />
+            </label>
+            <label class="company-manual-field">
+              시험일
+              <input id="certificate-add-exam" type="date" value="${toDateInputValue(preview.examDate)}" required />
+            </label>
+            <label class="company-manual-field">
+              결과 발표
+              <input id="certificate-add-result" type="date" value="${toDateInputValue(preview.resultDate)}" required />
+            </label>
+            <div class="modal-actions">
+              <button class="secondary-button" type="button" data-cert-modal-back>뒤로</button>
+              <button class="primary-button compact" type="submit">추가</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="modal-overlay" id="certificate-add-modal" role="dialog" aria-modal="true">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <strong>${escapeHtml(certName)} ${preview.round}회차 일정이 이렇게 계산됐어요</strong>
+          <button class="modal-close" type="button" data-cert-modal-close aria-label="닫기">×</button>
+        </div>
+        <p class="modal-desc">시험일(${formatKoreanDate(preview.examDate)}) 기준으로 역산했어요.</p>
+        <ul class="modal-summary-list">
+          <li><span>시험 준비</span><strong>${formatKoreanDate(preview.prepStart)}부터 (시험 6주 전)</strong></li>
+          <li><span>접수 마감</span><strong>${formatKoreanDate(preview.applicationStart)}</strong></li>
+          <li><span>결과 발표</span><strong>${formatKoreanDate(preview.resultDate)} (예상)</strong></li>
+        </ul>
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" data-cert-modal-manual>직접 설정할게요</button>
+          <button class="primary-button compact" type="button" data-cert-modal-confirm>그대로 할게요</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function addCompanySchedule(companyName) {
   if (!companyName) return;
   const recommendations = getCompanyRecommendations();
@@ -1612,7 +1934,9 @@ function toggleCompanySchedule(companyName) {
   if (selectedCompanies.includes(companyName)) {
     removeCompanySchedule(companyName);
   } else {
-    addCompanySchedule(companyName);
+    pendingCompanyAdd = { name: companyName };
+    pendingCompanyAddMode = 'preview';
+    renderCalendar();
   }
 }
 
