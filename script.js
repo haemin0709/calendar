@@ -854,7 +854,7 @@ function getVisibleMultiDayEvents(events, monthDate) {
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
   return events
-    .filter(event => layerState[event.layer] && event.end >= monthStart && event.start <= monthEnd && !sameDay(event.start, event.end))
+    .filter(event => layerState[event.layer] && isCertificateVisible(event) && event.end >= monthStart && event.start <= monthEnd && !sameDay(event.start, event.end))
     .map(event => ({
       ...event,
       visibleStart: event.start < monthStart ? monthStart : event.start,
@@ -889,38 +889,17 @@ function layoutWeekSegments(events, week) {
   });
 }
 
-function renderMonthEventTrack(monthDate, events) {
-  const weeks = buildMonthWeeks(monthDate);
-  const multiDayEvents = getVisibleMultiDayEvents(events, monthDate);
+const WEEK_BAR_TOP_OFFSET = 32;
+const WEEK_BAR_LANE_HEIGHT = 22;
 
-  return `
-    <div class="month-event-track">
-      ${weeks.map((week, weekIndex) => {
-        const segments = layoutWeekSegments(multiDayEvents, week);
-        const laneCount = Math.max(1, ...segments.map(segment => segment.lane + 1), 1);
-        return `
-          <div class="event-week" style="--lanes:${laneCount}">
-            ${segments.map(segment => `
-              <button
-                class="event-range ${segment.layer} ${segment.seriesClass || ''}"
-                style="grid-column:${segment.startCol + 1} / ${segment.endCol + 2}; grid-row:${segment.lane + 1};"
-                data-event="${segment.id}"
-                type="button"
-              >
-                ${escapeHtml(segment.title)}
-              </button>
-            `).join('')}
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
+function renderWeekBlock(week, events, multiDayEvents) {
+  const segments = layoutWeekSegments(multiDayEvents, week);
+  const laneCount = segments.length ? Math.max(...segments.map(segment => segment.lane + 1)) : 0;
+  const dayEventsStyle = laneCount ? ` style="padding-top:${laneCount * WEEK_BAR_LANE_HEIGHT + 6}px"` : '';
 
-function renderWeekBlock(week, events) {
   const dayCells = week.map(day => {
     if (!day) return '<div class="day empty"></div>';
-    const dayEvents = sortDayEvents(events.filter(event => layerState[event.layer] && isCertificateVisible(event) && event.start <= day && event.end >= day));
+    const dayEvents = sortDayEvents(events.filter(event => layerState[event.layer] && isCertificateVisible(event) && sameDay(event.start, event.end) && event.start <= day && event.end >= day));
     const isToday = sameDay(day, today);
     const visibleEvents = getPinnedEvents(dayEvents, day);
     const hiddenCount = Math.max(0, dayEvents.length - visibleEvents.length);
@@ -929,7 +908,7 @@ function renderWeekBlock(week, events) {
     return `
       <div class="day ${isToday ? 'today' : ''}">
         <time>${day.getDate()}</time>
-        <div class="day-events">
+        <div class="day-events"${dayEventsStyle}>
           ${visibleEvents.map(event => `
             <button class="event event-chip ${event.layer} ${event.seriesClass || ''} ${event.markerLabel ? 'marker-only' : ''}" data-event="${event.id}" type="button" title="${escapeHtml(event.title)}">
               <span class="event-company-label">${escapeHtml(event.eventLabel || event.companyName || event.title)}</span>
@@ -954,12 +933,25 @@ function renderWeekBlock(week, events) {
     `;
   }).join('');
 
+  const barCells = segments.map(segment => `
+    <button
+      class="event-range ${segment.layer} ${segment.seriesClass || ''}"
+      style="top:${WEEK_BAR_TOP_OFFSET + segment.lane * WEEK_BAR_LANE_HEIGHT}px; left:calc(${segment.startCol} * 100% / 7 + 2px); width:calc(${segment.endCol - segment.startCol + 1} * 100% / 7 - 4px);"
+      data-event="${segment.id}"
+      type="button"
+      title="${escapeHtml(segment.title)}"
+    >
+      <span class="event-range-label">${escapeHtml(segment.eventLabel || segment.companyName || segment.title)}</span>
+      ${segment.markerLabel ? `<span class="event-range-marker">${escapeHtml(segment.markerLabel)}</span>` : ''}
+    </button>
+  `).join('');
+
   return `
     <div class="week-block">
       <div class="weekdays week-grid-head">
         ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<span>${day}</span>`).join('')}
       </div>
-      <div class="grid">${dayCells}</div>
+      <div class="grid">${dayCells}${barCells}</div>
     </div>
   `;
 }
@@ -1053,6 +1045,7 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
   const monthEvents = monthEventsForSummary(events, monthDate);
   const recruitmentActive = monthEvents.some(event => event.layer === 'recruitment');
   const weeks = buildMonthWeeks(monthDate);
+  const multiDayEvents = getVisibleMultiDayEvents(events, monthDate);
 
   return `
     <section class="month-section ${recruitmentActive ? 'recruitment-active' : ''} ${calendarTransition ? `turn-${calendarTransition}` : ''}">
@@ -1072,7 +1065,7 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
         </div>
       </div>
       <div class="month-grid">
-        ${weeks.map(week => renderWeekBlock(week, events)).join('')}
+        ${weeks.map(week => renderWeekBlock(week, events, multiDayEvents)).join('')}
       </div>
     </section>
   `;

@@ -996,38 +996,38 @@ aside{
   padding-top:14px;
 }
 
-.month-event-track{
-  position:absolute;
-  left:18px;
-  right:18px;
-  top:78px;
-  z-index:3;
-  pointer-events:none;
-}
-
-.event-week{
-  display:grid;
-  grid-template-columns:repeat(7,minmax(0,1fr));
-  grid-auto-rows:22px;
-  gap:3px;
-  margin-bottom:4px;
-}
-
 .event-range{
-  pointer-events:auto;
-  display:block;
-  width:100%;
+  position:absolute;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  height:20px;
   padding:2px 8px;
   border:0;
-  border-radius:6px;
+  border-radius:5px;
   color:#1e2430;
-  font-size:10px;
-  font-weight:700;
+  font-size:11px;
+  font-weight:600;
   text-align:left;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  box-shadow:0 1px 0 rgba(0,0,0,.08);
+  cursor:pointer;
+}
+
+.event-range-label{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.event-range-marker{
+  flex:0 0 auto;
+  color:#4a5568;
+  font-size:9px;
+  font-weight:700;
 }
 
 .week-block{
@@ -1057,6 +1057,7 @@ aside{
 
 
 .grid{
+  position:relative;
   display:grid;
   grid-template-columns:repeat(7,minmax(0,1fr));
 }
@@ -1173,7 +1174,10 @@ aside{
   background:var(--recruit);
 }
 
-.event-range.certificate{
+.event-range.certificatePrep,
+.event-range.certificateApply,
+.event-range.certificateExam,
+.event-range.certificateResult{
   background:var(--certificate);
 }
 
