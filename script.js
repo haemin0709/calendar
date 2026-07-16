@@ -298,7 +298,7 @@ function parseSeason(season) {
   if (!yearText || !half) return null;
   return {
     year: Number(yearText),
-    month: half === '상반기' ? 5 : 11,
+    half,
   };
 }
 
@@ -352,7 +352,13 @@ function formatRange(start, end) {
 function targetSeasonDate() {
   const parsed = parseSeason(state.season);
   if (!parsed) return addMonths(startOfMonth(today), 2);
-  const target = new Date(parsed.year, parsed.month + 1, 0);
+
+  // 실제 공채 서류 마감 기준: 하반기는 9월 중순. 아래에서 -21일로 역산해 마감일을 구하므로
+  // 마감일보다 21일 뒤 날짜를 반환한다.
+  const target = parsed.half === '하반기'
+    ? addDays(new Date(parsed.year, 8, 15), 21)
+    : new Date(parsed.year, 5 + 1, 0);
+
   if (target < startOfMonth(today)) return addMonths(startOfMonth(today), 2);
   return target;
 }
@@ -1065,6 +1071,7 @@ function renderCalendar() {
       </header>
       <div class="calendar-layout" id="calendar-layout" style="--sidebar-width:${sidebarWidth}px">
         <aside>
+          ${quoteCardMarkup()}
           <section class="next-task">
             ${renderAccordionSection('dday', 'D-day', `
               ${(getCompanyDdayList().length || getCertificateDayItems().length) ? `
@@ -1092,8 +1099,6 @@ function renderCalendar() {
                   ` : ''}
                 </div>
               ` : ''}
-              <div class="section-divider"></div>
-              ${quoteCardMarkup()}
             `)}
           </section>
           <section class="layer-panel">

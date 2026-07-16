@@ -418,10 +418,6 @@ aside{
   letter-spacing:.08em;
 }
 
-.section-toggle .panel-label{
-  margin:0;
-}
-
 .panel-sublabel{
   margin:0 0 8px;
   color:#9aa2ad;
@@ -444,22 +440,30 @@ aside{
   align-items:center;
   justify-content:space-between;
   width:100%;
-  padding:0;
+  padding:2px 0;
   border:0;
   background:transparent;
   cursor:pointer;
   text-align:left;
 }
 
+.section-toggle .panel-label{
+  margin:0;
+  color:var(--ink);
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:normal;
+}
+
 .section-toggle .toggle-icon{
   flex:0 0 auto;
   color:#9aa2ad;
-  font-size:14px;
+  font-size:16px;
   font-weight:700;
 }
 
 .section-toggle:hover .panel-label{
-  color:var(--ink);
+  color:var(--accent-strong);
 }
 
 .section-body{
@@ -469,6 +473,10 @@ aside{
 .section-divider{
   margin:14px 0;
   border-top:1px solid var(--border);
+}
+
+.quote-card{
+  padding-bottom:16px;
 }
 
 .quote-card strong{
