@@ -762,6 +762,42 @@ aside{
   gap:8px;
 }
 
+.quick-add-checkbox{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.quick-add-checkbox input{
+  accent-color:var(--accent);
+}
+
+.event-date-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.event-date-row input[type="date"]{
+  flex:1;
+  width:auto;
+  min-width:0;
+}
+
+.event-date-row .quick-add-checkbox{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+.date-range-separator{
+  color:var(--muted);
+  font-size:12px;
+}
+
 .secondary-button{
   display:inline-flex;
   align-items:center;
@@ -1233,6 +1269,36 @@ aside{
 
 .event-range.personal{
   background:var(--personal);
+}
+
+.event-chip.label-1,
+.event-range.label-1,
+.popover-dot.label-1{
+  background:#c9efe6;
+}
+
+.event-chip.label-2,
+.event-range.label-2,
+.popover-dot.label-2{
+  background:#dde1f5;
+}
+
+.event-chip.label-3,
+.event-range.label-3,
+.popover-dot.label-3{
+  background:#ffd6cc;
+}
+
+.event-chip.label-4,
+.event-range.label-4,
+.popover-dot.label-4{
+  background:#c9edf7;
+}
+
+.event-chip.label-5,
+.event-range.label-5,
+.popover-dot.label-5{
+  background:#eee6b8;
 }
 
 .event-chip span:last-child{

@@ -180,6 +180,14 @@ const COMPANY_HOMEPAGES = {
   '한국철도공사': 'https://info.korail.com/info/selectBbsNttList.do?bbsNo=198&key=733',
 };
 
+const PERSONAL_LABEL_PRESETS = ['약속', '스터디', '대외활동/공모전', '병원', '여행'];
+const PERSONAL_LABEL_COLOR_CLASSES = ['label-1', 'label-2', 'label-3', 'label-4', 'label-5'];
+
+function getPersonalLabelColorClass(label) {
+  if (!label) return null;
+  return PERSONAL_LABEL_COLOR_CLASSES[hashCode(label) % PERSONAL_LABEL_COLOR_CLASSES.length];
+}
+
 const JOB_COMPANY_PRIORITY = {
   '서비스기획': ['삼성전자', '현대자동차', 'LG전자', 'Google', 'Microsoft'],
   '마케팅': ['LG전자', 'CJ제일제당', 'Google', 'Meta', 'Amazon'],
@@ -220,14 +228,14 @@ const DAILY_QUOTES = [
 ];
 
 const LAYER_META = {
-  recruitment: { label: '서류 지원 마감', quickAddLabel: '서류 지원 마감', color: 'recruitment', group: '공채 준비' },
-  resume: { label: '서류 준비', quickAddLabel: '서류 준비', color: 'resume', group: '공채 준비' },
-  aptitude: { label: '인적성 준비', quickAddLabel: '인적성 준비', color: 'aptitude', group: '공채 준비' },
-  certificatePrep: { label: '시험 준비', quickAddLabel: '자격증 시험 준비', color: 'certificate', group: '자격증 준비' },
-  certificateApply: { label: '접수 마감', quickAddLabel: '자격증 접수 마감', color: 'certificate', group: '자격증 준비' },
-  certificateExam: { label: '시험', quickAddLabel: '자격증 시험', color: 'certificate', group: '자격증 준비' },
-  certificateResult: { label: '결과 발표', quickAddLabel: '자격증 결과 발표', color: 'certificate', group: '자격증 준비' },
-  personal: { label: '개인 일정', quickAddLabel: '개인 일정', color: 'personal', group: '개인 일정' },
+  recruitment: { label: '서류 지원 마감', color: 'recruitment', group: '공채 준비' },
+  resume: { label: '서류 준비', color: 'resume', group: '공채 준비' },
+  aptitude: { label: '인적성 준비', color: 'aptitude', group: '공채 준비' },
+  certificatePrep: { label: '시험 준비', color: 'certificate', group: '자격증 준비' },
+  certificateApply: { label: '접수 마감', color: 'certificate', group: '자격증 준비' },
+  certificateExam: { label: '시험', color: 'certificate', group: '자격증 준비' },
+  certificateResult: { label: '결과 발표', color: 'certificate', group: '자격증 준비' },
+  personal: { label: '개인 일정', color: 'personal', group: '개인 일정' },
 };
 
 const app = document.querySelector('#app');
@@ -275,6 +283,7 @@ let pendingCompanyAddMode = 'preview';
 let pendingCertificateAdd = null;
 let pendingCertificateAddMode = 'preview';
 const dismissedDeadlineKeys = new Set();
+let quickAddIsSingleDay = true;
 
 function getSessionId() {
   let id = sessionStorage.getItem('chwippo-session-id');
@@ -661,12 +670,11 @@ function addCertificateScheduleWithDates(certName, round, prepStartValue, prepEn
   const cert = findCertificateByName(certName);
   if (!cert || !prepStartValue || !prepEndValue || !applyValue || !examValue || !resultValue) return;
 
-  const toDate = value => new Date(`${value}T12:00:00`);
-  const prepStart = toDate(prepStartValue);
-  const prepEnd = toDate(prepEndValue);
-  const applyDate = toDate(applyValue);
-  const examDate = toDate(examValue);
-  const resultDate = toDate(resultValue);
+  const prepStart = parseDateInputValue(prepStartValue);
+  const prepEnd = parseDateInputValue(prepEndValue);
+  const applyDate = parseDateInputValue(applyValue);
+  const examDate = parseDateInputValue(examValue);
+  const resultDate = parseDateInputValue(resultValue);
   const roundNumber = Number(round) || 1;
 
   const certEvents = [
@@ -912,12 +920,17 @@ function getCertificateDayItems() {
   }).filter(Boolean).sort((a, b) => a.days - b.days);
 }
 
+function parseDateInputValue(value) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function getCustomEvents() {
   return customEvents.map(event => ({
     ...event,
     custom: true,
-    start: event.start instanceof Date ? event.start : new Date(`${event.start}T12:00:00`),
-    end: event.end instanceof Date ? event.end : new Date(`${event.end || event.start}T12:00:00`),
+    start: event.start instanceof Date ? event.start : parseDateInputValue(event.start),
+    end: event.end instanceof Date ? event.end : parseDateInputValue(event.end || event.start),
   }));
 }
 
@@ -1057,7 +1070,7 @@ function renderWeekBlock(week, events, multiDayEvents) {
         <time>${day.getDate()}</time>
         <div class="day-events"${dayEventsStyle}>
           ${visibleEvents.map(event => `
-            <button class="event event-chip ${event.layer} ${event.seriesClass || ''} ${event.markerLabel ? 'marker-only' : ''}" data-event="${event.id}" type="button" title="${escapeHtml(event.title)}">
+            <button class="event event-chip ${event.layer} ${event.customLabel ? getPersonalLabelColorClass(event.customLabel) : ''} ${event.seriesClass || ''} ${event.markerLabel ? 'marker-only' : ''}" data-event="${event.id}" type="button" title="${escapeHtml(event.title)}">
               <span class="event-company-label">${escapeHtml(event.eventLabel || event.companyName || event.title)}</span>
               ${event.markerLabel ? `<span class="event-marker-label">${escapeHtml(event.markerLabel)}</span>` : ''}
             </button>
@@ -1068,7 +1081,7 @@ function renderWeekBlock(week, events, multiDayEvents) {
               <div class="more-popover" role="dialog">
                 ${hiddenEvents.map(event => `
                   <button class="popover-item" type="button" data-event="${event.id}">
-                    <span class="popover-dot ${event.layer}"></span>
+                    <span class="popover-dot ${event.customLabel ? getPersonalLabelColorClass(event.customLabel) : event.layer}"></span>
                     <span>${escapeHtml(event.title)}</span>
                   </button>
                 `).join('')}
@@ -1082,7 +1095,7 @@ function renderWeekBlock(week, events, multiDayEvents) {
 
   const barCells = segments.map(segment => `
     <button
-      class="event-range ${segment.layer} ${segment.seriesClass || ''}"
+      class="event-range ${segment.layer} ${segment.customLabel ? getPersonalLabelColorClass(segment.customLabel) : ''} ${segment.seriesClass || ''}"
       style="top:${WEEK_BAR_TOP_OFFSET + segment.lane * WEEK_BAR_LANE_HEIGHT}px; left:calc(${segment.startCol} * 100% / 7 + 2px); width:calc(${segment.endCol - segment.startCol + 1} * 100% / 7 - 4px);"
       data-event="${segment.id}"
       type="button"
@@ -1295,10 +1308,24 @@ function renderCalendar() {
             ${renderAccordionSection('quickAdd', '일정 추가', `
               <form id="event-form" class="event-form">
                 <input id="event-title" type="text" placeholder="일정 제목" maxlength="30" required />
-                <input id="event-date" type="date" value="${toDateInputValue(today)}" required />
-                <select id="event-layer">
-                  ${Object.entries(LAYER_META).map(([key, meta]) => `<option value="${key}" ${key === 'personal' ? 'selected' : ''}>${meta.quickAddLabel}</option>`).join('')}
+                <div class="event-date-row">
+                  <input id="event-date-start" type="date" value="${toDateInputValue(today)}" required />
+                  <label class="quick-add-checkbox">
+                    <input type="checkbox" id="event-single-day" ${quickAddIsSingleDay ? 'checked' : ''} />
+                    당일
+                  </label>
+                </div>
+                ${quickAddIsSingleDay ? '' : `
+                  <div class="event-date-row">
+                    <span class="date-range-separator">~</span>
+                    <input id="event-date-end" type="date" value="${toDateInputValue(today)}" required />
+                  </div>
+                `}
+                <select id="event-label-select">
+                  <option value="">라벨 없음</option>
+                  ${PERSONAL_LABEL_PRESETS.map(label => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join('')}
                 </select>
+                <input id="event-label-custom" type="text" placeholder="라벨 직접 입력 (선택)" maxlength="12" />
                 <textarea id="event-detail" rows="3" placeholder="메모"></textarea>
                 <button type="submit" class="primary-button compact">일정 추가 <span>＋</span></button>
               </form>
@@ -1600,28 +1627,49 @@ function renderCalendar() {
     });
   });
 
+  document.querySelector('#event-single-day')?.addEventListener('change', event => {
+    quickAddIsSingleDay = event.target.checked;
+    renderCalendar();
+  });
+
   const eventForm = document.querySelector('#event-form');
   if (eventForm) {
     eventForm.addEventListener('submit', event => {
       event.preventDefault();
       const title = document.querySelector('#event-title').value.trim();
-      const date = document.querySelector('#event-date').value;
-      const layer = document.querySelector('#event-layer').value;
+      const startDate = document.querySelector('#event-date-start').value;
+      const endDateEl = document.querySelector('#event-date-end');
+      const endDateInput = endDateEl ? endDateEl.value : startDate;
+      const labelSelect = document.querySelector('#event-label-select').value;
+      const labelCustom = document.querySelector('#event-label-custom').value.trim();
+      const label = labelCustom || labelSelect;
       const detail = document.querySelector('#event-detail').value.trim();
 
-      if (!title || !date) return;
+      if (!title || !startDate || !endDateInput) return;
+      const endDate = endDateInput < startDate ? startDate : endDateInput;
 
       customEvents.unshift({
         id: `custom-${Date.now()}`,
         title,
-        start: date,
-        end: date,
-        layer,
-        kind: layer === 'personal' ? '개인 일정' : '추가 일정',
+        start: startDate,
+        end: endDate,
+        layer: 'personal',
+        kind: label || '개인 일정',
         detail: detail || '사용자가 직접 추가한 일정입니다.',
+        customLabel: label || null,
+        markerLabel: label || undefined,
       });
 
-      trackEvent('custom_event_added', { layer, title });
+      layerState.personal = true;
+
+      const monthDates = monthRange(today, getCalendarRangeEndDate());
+      const [startYear, startMonth] = startDate.split('-').map(Number);
+      const eventMonthIndex = monthDates.findIndex(monthDate => monthDate.getFullYear() === startYear && monthDate.getMonth() === startMonth - 1);
+      if (eventMonthIndex >= 0) {
+        calendarViewIndex = eventMonthIndex;
+      }
+
+      trackEvent('custom_event_added', { title, label: label || null });
       renderCalendar();
     });
   }
@@ -2069,13 +2117,12 @@ function addCompanyScheduleWithDates(companyName, deadlineValue, resumeStartValu
   const trimmed = String(companyName || '').trim();
   if (!trimmed || !deadlineValue || !resumeStartValue || !resumeEndValue || !aptitudeStartValue || !aptitudeEndValue) return;
 
-  const toDate = value => new Date(`${value}T12:00:00`);
   const manualDates = {
-    deadline: toDate(deadlineValue),
-    resumeStart: toDate(resumeStartValue),
-    resumeEnd: toDate(resumeEndValue),
-    aptitudeStart: toDate(aptitudeStartValue),
-    aptitudeEnd: toDate(aptitudeEndValue),
+    deadline: parseDateInputValue(deadlineValue),
+    resumeStart: parseDateInputValue(resumeStartValue),
+    resumeEnd: parseDateInputValue(resumeEndValue),
+    aptitudeStart: parseDateInputValue(aptitudeStartValue),
+    aptitudeEnd: parseDateInputValue(aptitudeEndValue),
   };
 
   const recommendations = getCompanyRecommendations();
