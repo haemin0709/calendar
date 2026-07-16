@@ -274,6 +274,7 @@ let pendingCompanyAdd = null;
 let pendingCompanyAddMode = 'preview';
 let pendingCertificateAdd = null;
 let pendingCertificateAddMode = 'preview';
+const dismissedDeadlineKeys = new Set();
 
 function getSessionId() {
   let id = sessionStorage.getItem('chwippo-session-id');
@@ -438,6 +439,40 @@ function getCompanyDdayList() {
       days: Math.max(0, Math.ceil((deadline - today) / (1000 * 60 * 60 * 24))),
     };
   }).sort((left, right) => left.days - right.days);
+}
+
+function getUrgentDeadlines() {
+  const items = [];
+  const companyEvents = getCompanyEvents();
+
+  selectedCompanies.forEach(company => {
+    const deadlineEvent = companyEvents.find(event => event.companyName === company && event.layer === 'recruitment');
+    if (!deadlineEvent) return;
+    const days = Math.ceil((deadlineEvent.start - today) / (1000 * 60 * 60 * 24));
+    if (days >= 0 && days <= 3) {
+      items.push({ key: `company:${company}`, label: `${company} 서류 마감`, days });
+    }
+  });
+
+  const certLabels = {
+    certificateApply: '접수 마감',
+    certificateExam: '시험',
+  };
+
+  getCustomEvents()
+    .filter(event => (event.layer === 'certificateApply' || event.layer === 'certificateExam') && event.certName)
+    .forEach(event => {
+      const days = Math.ceil((event.start - today) / (1000 * 60 * 60 * 24));
+      if (days >= 0 && days <= 3) {
+        items.push({ key: `cert:${event.id}`, label: `${event.certName} ${certLabels[event.layer]}`, days });
+      }
+    });
+
+  return items.sort((left, right) => left.days - right.days);
+}
+
+function getVisibleUrgentDeadlines() {
+  return getUrgentDeadlines().filter(item => !dismissedDeadlineKeys.has(item.key));
 }
 
 function getAllCertificateRecommendations() {
@@ -1276,10 +1311,13 @@ function renderCalendar() {
         </main>
       </div>
       <div class="detail" id="detail" hidden></div>
-      ${activeCertificateGoalEditor ? renderCertificateGoalEditor(activeCertificateGoalEditor) : ''}
       ${renderCompanyAddModal()}
       ${renderCertificateAddModal()}
-      ${toastMessage ? `<div class="toast" role="status" aria-live="polite">${escapeHtml(toastMessage)}</div>` : ''}
+      <div class="floating-stack">
+        ${renderDeadlineAlert()}
+        ${activeCertificateGoalEditor ? renderCertificateGoalEditor(activeCertificateGoalEditor) : ''}
+        ${toastMessage ? `<div class="toast" role="status" aria-live="polite">${escapeHtml(toastMessage)}</div>` : ''}
+      </div>
     </div>
   `;
 
@@ -1324,6 +1362,11 @@ function renderCalendar() {
       activeCertificateGoalEditor = cert.name;
       renderCalendar();
     });
+  });
+
+  document.querySelector('#deadline-alert-card [data-deadline-alert-close]')?.addEventListener('click', () => {
+    getUrgentDeadlines().forEach(item => dismissedDeadlineKeys.add(item.key));
+    renderCalendar();
   });
 
   const goalEditor = document.querySelector('#certificate-goal-editor');
@@ -1674,7 +1717,6 @@ function renderCertificatePlan() {
           <p class="panel-label">선택한 자격증</p>
           <div class="certificate-card preview-card ${activeCertificatePicker === activeLibraryCert.name ? 'expanded' : ''}">
             <div class="certificate-head">
-              <span class="priority">${activeLibraryCert.rank}순위</span>
               <strong>${escapeHtml(activeLibraryCert.name)}</strong>
               <small>${escapeHtml(getCertificatePriorityCompanies(activeLibraryCert.name).join(', '))}</small>
             </div>
@@ -1811,6 +1853,24 @@ function renderCertificateGoalEditor(certName) {
         </label>
         <button class="primary-button compact" type="submit">저장</button>
       </form>
+    </div>
+  `;
+}
+
+function renderDeadlineAlert() {
+  const items = getVisibleUrgentDeadlines();
+  if (!items.length) return '';
+  return `
+    <div class="deadline-alert-card" id="deadline-alert-card" role="alert">
+      <div class="deadline-alert-head">
+        <strong>⏰ 마감이 임박했어요</strong>
+        <button class="modal-close" type="button" data-deadline-alert-close aria-label="닫기">×</button>
+      </div>
+      <ul class="deadline-alert-list">
+        ${items.map(item => `
+          <li><span>${escapeHtml(item.label)}</span><strong>D-${item.days}</strong></li>
+        `).join('')}
+      </ul>
     </div>
   `;
 }

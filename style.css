@@ -52,6 +52,11 @@ a{
   min-height:100vh;
 }
 
+.landing{
+  display:flex;
+  flex-direction:column;
+}
+
 .landing-header,
 .calendar-header{
   display:flex;
@@ -68,7 +73,7 @@ a{
 }
 
 .calendar-header{
-  padding:0 max(28px, calc((100vw - 1200px) / 2));
+  padding:0 24px;
 }
 
 .logo{
@@ -88,12 +93,12 @@ a{
 }
 
 .hero{
-  padding:92px 24px 72px;
+  padding:clamp(24px, 5vh, 80px) 24px clamp(20px, 4vh, 64px);
   text-align:center;
 }
 
 .eyebrow{
-  margin:0 0 18px;
+  margin:0 0 clamp(8px, 1.5vh, 18px);
   color:var(--accent);
   font-size:11px;
   font-weight:700;
@@ -111,8 +116,8 @@ a{
 
 .hero h1{
   margin:0;
-  font-size:48px;
-  line-height:1.12;
+  font-size:clamp(28px, 4.2vh, 46px);
+  line-height:1.14;
   letter-spacing:0;
 }
 
@@ -122,9 +127,9 @@ a{
 }
 
 .hero-copy{
-  margin:18px 0 36px;
+  margin:clamp(8px, 1.5vh, 18px) 0 clamp(14px, 3vh, 34px);
   color:#535861;
-  font-size:18px;
+  font-size:clamp(14px, 1.6vh, 18px);
   font-weight:600;
 }
 
@@ -140,7 +145,7 @@ a{
 }
 
 .card-label{
-  padding:12px 20px;
+  padding:clamp(12px, 1.6vh, 18px) 20px;
   border-bottom:1px solid var(--border);
   background:var(--surface-soft);
   color:var(--muted);
@@ -151,10 +156,10 @@ a{
   display:flex;
   align-items:center;
   gap:10px;
-  min-height:90px;
+  min-height:clamp(64px, 10vh, 110px);
   padding:0 24px;
   border-bottom:1px solid var(--border);
-  font-size:20px;
+  font-size:clamp(16px, 1.8vh, 20px);
   font-weight:600;
   white-space:nowrap;
 }
@@ -183,13 +188,13 @@ a{
 }
 
 .season-field{
-  padding:18px 20px;
+  padding:clamp(14px, 2.4vh, 24px) 20px;
   border-bottom:1px solid var(--border);
 }
 
 .season-field > span{
   display:block;
-  margin-bottom:10px;
+  margin-bottom:8px;
   color:var(--muted);
   font-size:12px;
 }
@@ -243,13 +248,18 @@ a{
   transform:none;
 }
 
+.selector-card .primary-button{
+  margin:clamp(14px, 2.6vh, 24px) 20px;
+  padding:clamp(12px, 1.8vh, 16px) 16px;
+}
+
 .primary-button.compact{
   width:100%;
   margin:10px 0 0;
 }
 
 .form-hint{
-  margin:14px 0 0;
+  margin:clamp(6px, 1.2vh, 14px) 0 0;
   color:var(--muted);
   font-size:12px;
 }
@@ -257,19 +267,23 @@ a{
 .benefits{
   display:grid;
   grid-template-columns:repeat(3,1fr);
+  flex:1;
   gap:1px;
   border-top:1px solid var(--border);
   background:var(--border);
 }
 
 .benefits div{
-  padding:34px 28px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+  padding:clamp(16px, 2.4vh, 28px) 28px 20px;
   background:var(--surface);
 }
 
 .benefits b{
   display:block;
-  margin-bottom:16px;
+  margin-bottom:clamp(6px, 1.4vh, 16px);
   color:var(--accent);
   font-size:11px;
   letter-spacing:.08em;
@@ -1422,12 +1436,80 @@ aside{
   background:#fff;
 }
 
-.certificate-goal-card{
+.floating-stack{
   position:fixed;
   right:20px;
   bottom:20px;
-  z-index:25;
+  z-index:35;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:12px;
+}
+
+.certificate-goal-card{
+  align-self:flex-end;
   width:min(360px,calc(100% - 40px));
+}
+
+.deadline-alert-card{
+  align-self:flex-end;
+  box-sizing:border-box;
+  width:300px;
+  max-width:calc(100vw - 40px);
+  padding:14px 16px;
+  border:1px solid #f3c6b4;
+  border-radius:12px;
+  background:#fff7f2;
+  box-shadow:0 16px 40px rgba(180,70,20,.15);
+}
+
+.deadline-alert-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.deadline-alert-head strong{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#b34d1f;
+  font-size:13px;
+  font-weight:700;
+}
+
+.deadline-alert-list{
+  display:grid;
+  gap:6px;
+  list-style:none;
+}
+
+.deadline-alert-list li{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:12px;
+  color:#5f3a26;
+}
+
+.deadline-alert-list li span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.deadline-alert-list li strong{
+  flex:0 0 auto;
+  white-space:nowrap;
+  color:#c2410c;
+  font-weight:700;
 }
 
 .modal-overlay{
@@ -1591,10 +1673,7 @@ aside{
 }
 
 .toast{
-  position:fixed;
-  right:20px;
-  bottom:20px;
-  z-index:30;
+  align-self:flex-end;
   max-width:min(360px,calc(100% - 40px));
   padding:12px 14px;
   border:1px solid #dfe5ee;
