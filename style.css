@@ -863,7 +863,7 @@ aside{
 }
 
 .month-stack{
-  padding:28px;
+  padding:18px 28px;
 }
 
 .month-section{
@@ -921,7 +921,7 @@ aside{
   align-items:flex-start;
   justify-content:space-between;
   gap:12px;
-  margin-bottom:16px;
+  margin-bottom:12px;
 }
 
 .month-nav{
@@ -1066,7 +1066,7 @@ aside{
 }
 
 .day{
-  min-height:128px;
+  min-height:min(128px, max(88px, calc((100vh - 280px) / 6)));
   padding:8px;
   border-right:1px solid var(--border);
   border-bottom:1px solid var(--border);

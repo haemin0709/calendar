@@ -813,13 +813,14 @@ function buildMonthWeeks(monthDate) {
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
   const offset = monthStart.getDay();
-  const cells = Array.from({ length: 42 }, (_, index) => {
+  const weekCount = Math.ceil((offset + monthEnd.getDate()) / 7);
+  const cells = Array.from({ length: weekCount * 7 }, (_, index) => {
     const dayNumber = index - offset + 1;
     if (index < offset || dayNumber > monthEnd.getDate()) return null;
     return new Date(monthDate.getFullYear(), monthDate.getMonth(), dayNumber);
   });
 
-  return Array.from({ length: 6 }, (_, weekIndex) => cells.slice(weekIndex * 7, weekIndex * 7 + 7));
+  return Array.from({ length: weekCount }, (_, weekIndex) => cells.slice(weekIndex * 7, weekIndex * 7 + 7));
 }
 
 function getVisibleMultiDayEvents(events, monthDate) {
@@ -920,9 +921,6 @@ function renderWeekBlock(week, events, multiDayEvents) {
 
   return `
     <div class="week-block">
-      <div class="weekdays week-grid-head">
-        ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<span>${day}</span>`).join('')}
-      </div>
       <div class="grid">${dayCells}${barCells}</div>
     </div>
   `;
@@ -1035,6 +1033,9 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
             <span>›</span>
           </button>
         </div>
+      </div>
+      <div class="weekdays week-grid-head">
+        ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<span>${day}</span>`).join('')}
       </div>
       <div class="month-grid">
         ${weeks.map(week => renderWeekBlock(week, events, multiDayEvents)).join('')}
