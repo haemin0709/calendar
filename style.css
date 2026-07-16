@@ -313,12 +313,8 @@ a{
 
 .dday-row{
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
-  padding:12px 28px 10px;
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
+  flex-direction:column;
+  gap:10px;
 }
 
 .dday-group{
@@ -326,13 +322,6 @@ a{
   flex-wrap:wrap;
   gap:8px;
   min-width:0;
-  flex:1 1 0;
-}
-
-.certificate-dday-list{
-  justify-content:flex-end;
-  margin-left:auto;
-  text-align:right;
 }
 
 .company-dday-pill{
@@ -359,10 +348,6 @@ a{
   font-weight:700;
 }
 
-.certificate-dday-list .company-dday-pill{
-  justify-content:flex-end;
-}
-
 .certificate-pill{
   gap:10px;
 }
@@ -383,38 +368,6 @@ a{
   font-size:11px;
   font-weight:700;
   cursor:pointer;
-}
-
-.dday{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:12px 28px;
-  border-bottom:1px solid #cfe3fb;
-  background:var(--accent-soft);
-}
-
-.dday > span{
-  padding:4px 10px;
-  border-radius:999px;
-  background:#fff;
-  color:var(--accent-strong);
-  font-size:12px;
-  font-weight:700;
-}
-
-.dday strong{
-  font-weight:600;
-}
-
-.dday em{
-  color:var(--accent-strong);
-  font-style:normal;
-}
-
-.dday small{
-  margin-left:auto;
-  color:#587091;
 }
 
 .calendar-layout{
@@ -465,7 +418,18 @@ aside{
   letter-spacing:.08em;
 }
 
-.quote-card,
+.section-toggle .panel-label{
+  margin:0;
+}
+
+.panel-sublabel{
+  margin:0 0 8px;
+  color:#9aa2ad;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+}
+
 .layer-panel,
 .roadmap,
 .quick-add,
@@ -475,9 +439,36 @@ aside{
   border-top:1px solid var(--border);
 }
 
-.quote-card{
-  padding-top:0;
-  border-top:0;
+.section-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  padding:0;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  text-align:left;
+}
+
+.section-toggle .toggle-icon{
+  flex:0 0 auto;
+  color:#9aa2ad;
+  font-size:14px;
+  font-weight:700;
+}
+
+.section-toggle:hover .panel-label{
+  color:var(--ink);
+}
+
+.section-body{
+  margin-top:12px;
+}
+
+.section-divider{
+  margin:14px 0;
+  border-top:1px solid var(--border);
 }
 
 .quote-card strong{

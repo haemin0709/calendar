@@ -5,29 +5,6 @@ const JOBS_BY_TRACK = {
   '국내 공기업': ['사무행정', '경영기획', '인사·노무', '재무·회계', '홍보·대외협력', '사업관리', '고객지원', '지역·사회공헌'],
 };
 
-const RECRUITMENT_WINDOWS = {
-  '국내 대기업': {
-    months: [3, 9],
-    label: '상·하반기 공채가 몰리는 달',
-    detail: '국내 대기업은 보통 3월과 9월 전후에 공채 공고가 집중돼요.',
-  },
-  '해외 대기업': {
-    months: [2, 3, 4, 8, 9, 10],
-    label: '글로벌 채용 공고가 늘어나는 달',
-    detail: '해외계 기업은 상반기와 하반기 캠퍼스 리크루팅, 수시채용이 함께 열리는 편이에요.',
-  },
-  '국내 은행권': {
-    months: [3, 4, 8, 9],
-    label: '은행권 채용 시즌',
-    detail: '은행권은 상·하반기 공채와 인턴 전환이 겹치며 공고가 자주 올라와요.',
-  },
-  '국내 공기업': {
-    months: [4, 5, 6, 9, 10, 11],
-    label: '공기업 채용 시즌',
-    detail: '공기업은 상반기와 하반기 필기 전후로 채용공고가 집중되는 편이에요.',
-  },
-};
-
 const CERTIFICATE_RECOMMENDATIONS = {
   '국내 대기업': [
     {
@@ -262,6 +239,13 @@ let toastTimer = null;
 let toastMessage = '';
 let activeCertificateGoalEditor = null;
 let companyManualFormOpen = false;
+let sidebarSectionsOpen = {
+  dday: true,
+  layers: false,
+  company: false,
+  certificate: false,
+  quickAdd: false,
+};
 let sidebarWidth = 300;
 
 function getSessionId() {
@@ -394,12 +378,6 @@ function getDailyQuote() {
   return DAILY_QUOTES[index];
 }
 
-function getGoalProgressText() {
-  const months = monthRange(today, targetSeasonDate());
-  const recruitmentMonths = getRecruitmentEvents(months).length;
-  return `목표 시즌까지 ${months.length}개월, 공채 포인트 ${recruitmentMonths}개를 월별로 볼 수 있어요.`;
-}
-
 function getCompanyDdayList() {
   const events = getCompanyEvents();
   return selectedCompanies.map(company => {
@@ -457,29 +435,6 @@ function getSelectedCertificateList() {
 
 function getCertificatePriorityCompanies(certName) {
   return CERTIFICATE_PRIORITY_COMPANIES[certName] || [];
-}
-
-function getRecruitmentEvents(months) {
-  if (!state.track || !state.job) return [];
-  const blueprint = RECRUITMENT_WINDOWS[state.track];
-  if (!blueprint) return [];
-
-  return months
-    .filter(monthDate => blueprint.months.includes(monthDate.getMonth() + 1))
-    .map(monthDate => {
-      const monthStart = startOfMonth(monthDate);
-      const monthEnd = endOfMonth(monthDate);
-      return {
-        id: `recruit-${monthDate.getFullYear()}-${monthDate.getMonth()}`,
-        title: `${state.job} 공채 서류 마감`,
-        start: monthStart,
-        end: monthEnd,
-        layer: 'recruitment',
-        kind: '서류 마감',
-        detail: `${state.track}의 ${state.job} 직무는 보통 ${blueprint.label}에 공고가 자주 열려요. ${blueprint.detail}`,
-        badge: '공채 서류 마감',
-      };
-    });
 }
 
 function getCertificateRecommendations() {
@@ -830,10 +785,21 @@ function sortDayEvents(events) {
 
 function quoteCardMarkup() {
   return `
-    <section class="quote-card">
-      <p class="panel-label">오늘의 명언</p>
+    <div class="quote-card">
+      <p class="panel-sublabel">오늘의 명언</p>
       <strong>“${escapeHtml(getDailyQuote())}”</strong>
-    </section>
+    </div>
+  `;
+}
+
+function renderAccordionSection(key, label, bodyHtml) {
+  const isOpen = sidebarSectionsOpen[key];
+  return `
+    <button class="section-toggle" type="button" data-section-toggle="${key}" aria-expanded="${isOpen ? 'true' : 'false'}">
+      <span class="panel-label">${escapeHtml(label)}</span>
+      <span class="toggle-icon">${isOpen ? '−' : '+'}</span>
+    </button>
+    ${isOpen ? `<div class="section-body">${bodyHtml}</div>` : ''}
   `;
 }
 
@@ -1081,13 +1047,6 @@ function renderCalendar() {
   const monthDates = monthRange(today, targetSeasonDate());
   calendarViewIndex = clampCalendarViewIndex(monthDates.length);
   const visibleMonth = monthDates[calendarViewIndex];
-  const nextRecruitmentMonth = monthDates.slice(calendarViewIndex).find(monthDate => {
-    const monthEvents = monthEventsForSummary(events, monthDate);
-    return monthEvents.some(event => event.layer === 'recruitment');
-  }) || monthDates.find(monthDate => {
-    const monthEvents = monthEventsForSummary(events, monthDate);
-    return monthEvents.some(event => event.layer === 'recruitment');
-  });
 
   const previousAsideScrollTop = document.querySelector('aside')?.scrollTop ?? 0;
 
@@ -1104,78 +1063,61 @@ function renderCalendar() {
           <button id="edit-goal" type="button">수정</button>
         </div>
       </header>
-      <div class="dday">
-        <span>D-${Math.max(0, Math.ceil((targetSeasonDate() - today) / (1000 * 60 * 60 * 24)))}</span>
-        <strong>${getGoalProgressText()}</strong>
-        <small>${nextRecruitmentMonth ? `다음 공채 포인트는 ${formatMonthLabel(nextRecruitmentMonth)}입니다.` : '월별 일정을 차근차근 이어가세요.'}</small>
-      </div>
-      ${(getCompanyDdayList().length || getCertificateDayItems().length) ? `
-        <div class="dday-row">
-          ${getCompanyDdayList().length ? `
-            <div class="dday-group company-dday-list">
-              ${getCompanyDdayList().map(item => `
-                <div class="company-dday-pill">
-                  <span>${escapeHtml(item.company)}</span>
-                  <strong>D-${item.days}</strong>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-          ${getCertificateDayItems().length ? `
-            <div class="dday-group certificate-dday-list">
-              ${getCertificateDayItems().map(item => `
-                <div class="company-dday-pill certificate-pill">
-                  <span>${escapeHtml(item.cert.name)}</span>
-                  <strong>D-${item.days}</strong>
-                  <button class="pill-edit" type="button" data-cert-goal-edit="${escapeHtml(item.cert.name)}">목표 ${item.targetWeeks}주</button>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-      ` : ''}
       <div class="calendar-layout" id="calendar-layout" style="--sidebar-width:${sidebarWidth}px">
         <aside>
           <section class="next-task">
-            <p class="panel-label">오늘의 한 걸음</p>
-            ${(() => {
-              const nextTaskEvent = events.find(event => event.layer === 'aptitude') || events[0];
-              return nextTaskEvent
-                ? `
-                  <strong>${escapeHtml(nextTaskEvent.title)}</strong>
-                  <p>${escapeHtml(nextTaskEvent.detail)}</p>
-                `
-                : `
-                  <strong>관심 기업을 선택해보세요</strong>
-                  <p>아래에서 관심 기업을 추가하면 서류 마감, 인적성 준비, 자소서 마일스톤이 캘린더에 표시돼요.</p>
-                `;
-            })()}
+            ${renderAccordionSection('dday', 'D-day', `
+              ${(getCompanyDdayList().length || getCertificateDayItems().length) ? `
+                <div class="dday-row">
+                  ${getCompanyDdayList().length ? `
+                    <div class="dday-group company-dday-list">
+                      ${getCompanyDdayList().map(item => `
+                        <div class="company-dday-pill">
+                          <span>${escapeHtml(item.company)}</span>
+                          <strong>D-${item.days}</strong>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                  ${getCertificateDayItems().length ? `
+                    <div class="dday-group certificate-dday-list">
+                      ${getCertificateDayItems().map(item => `
+                        <div class="company-dday-pill certificate-pill">
+                          <span>${escapeHtml(item.cert.name)}</span>
+                          <strong>D-${item.days}</strong>
+                          <button class="pill-edit" type="button" data-cert-goal-edit="${escapeHtml(item.cert.name)}">목표 ${item.targetWeeks}주</button>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              ` : ''}
+              <div class="section-divider"></div>
+              ${quoteCardMarkup()}
+            `)}
           </section>
           <section class="layer-panel">
-            <p class="panel-label">표시할 일정</p>
-            ${renderLayerChecklist()}
+            ${renderAccordionSection('layers', '표시할 일정', renderLayerChecklist())}
           </section>
           <section class="company-panel-section">
-            <p class="panel-label">관심 기업 추가하기</p>
-            ${renderCompanyPanel()}
+            ${renderAccordionSection('company', '관심 기업 추가하기', renderCompanyPanel())}
           </section>
           <section class="roadmap">
-            <p class="panel-label">추천 자격증</p>
-            ${renderCertificatePlan()}
+            ${renderAccordionSection('certificate', '추천 자격증', renderCertificatePlan())}
           </section>
           <section class="quick-add">
-            <p class="panel-label">일정 추가</p>
-            <form id="event-form" class="event-form">
-              <input id="event-title" type="text" placeholder="일정 제목" maxlength="30" required />
-              <input id="event-date" type="date" value="${toDateInputValue(today)}" required />
-              <select id="event-layer">
-                ${Object.entries(LAYER_META).map(([key, meta]) => `<option value="${key}" ${key === 'personal' ? 'selected' : ''}>${meta.quickAddLabel}</option>`).join('')}
-              </select>
-              <textarea id="event-detail" rows="3" placeholder="메모"></textarea>
-              <button type="submit" class="primary-button compact">일정 추가 <span>＋</span></button>
-            </form>
+            ${renderAccordionSection('quickAdd', '일정 추가', `
+              <form id="event-form" class="event-form">
+                <input id="event-title" type="text" placeholder="일정 제목" maxlength="30" required />
+                <input id="event-date" type="date" value="${toDateInputValue(today)}" required />
+                <select id="event-layer">
+                  ${Object.entries(LAYER_META).map(([key, meta]) => `<option value="${key}" ${key === 'personal' ? 'selected' : ''}>${meta.quickAddLabel}</option>`).join('')}
+                </select>
+                <textarea id="event-detail" rows="3" placeholder="메모"></textarea>
+                <button type="submit" class="primary-button compact">일정 추가 <span>＋</span></button>
+              </form>
+            `)}
           </section>
-          ${quoteCardMarkup()}
         </aside>
         <div class="sidebar-resize-handle" id="sidebar-resize-handle" role="separator" aria-orientation="vertical" aria-label="사이드바 너비 조절"></div>
         <main class="month-stack">
@@ -1368,27 +1310,38 @@ function renderCalendar() {
     });
   });
 
-  document.querySelector('#event-form').addEventListener('submit', event => {
-    event.preventDefault();
-    const title = document.querySelector('#event-title').value.trim();
-    const date = document.querySelector('#event-date').value;
-    const layer = document.querySelector('#event-layer').value;
-    const detail = document.querySelector('#event-detail').value.trim();
+  const eventForm = document.querySelector('#event-form');
+  if (eventForm) {
+    eventForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const title = document.querySelector('#event-title').value.trim();
+      const date = document.querySelector('#event-date').value;
+      const layer = document.querySelector('#event-layer').value;
+      const detail = document.querySelector('#event-detail').value.trim();
 
-    if (!title || !date) return;
+      if (!title || !date) return;
 
-    customEvents.unshift({
-      id: `custom-${Date.now()}`,
-      title,
-      start: date,
-      end: date,
-      layer,
-      kind: layer === 'personal' ? '개인 일정' : '추가 일정',
-      detail: detail || '사용자가 직접 추가한 일정입니다.',
+      customEvents.unshift({
+        id: `custom-${Date.now()}`,
+        title,
+        start: date,
+        end: date,
+        layer,
+        kind: layer === 'personal' ? '개인 일정' : '추가 일정',
+        detail: detail || '사용자가 직접 추가한 일정입니다.',
+      });
+
+      trackEvent('custom_event_added', { layer, title });
+      renderCalendar();
     });
+  }
 
-    trackEvent('custom_event_added', { layer, title });
-    renderCalendar();
+  document.querySelectorAll('[data-section-toggle]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.sectionToggle;
+      sidebarSectionsOpen[key] = !sidebarSectionsOpen[key];
+      renderCalendar();
+    });
   });
 
   document.querySelectorAll('[data-event]').forEach(button => {
