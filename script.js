@@ -158,26 +158,26 @@ const COMPANY_RECOMMENDATIONS = {
 };
 
 const COMPANY_HOMEPAGES = {
-  '삼성전자': 'https://www.samsung.com/sec/',
-  '현대자동차': 'https://www.hyundai.com/kr/ko',
-  'LG전자': 'https://www.lge.co.kr/',
-  'CJ제일제당': 'https://www.cj.co.kr/kr/main/cj-cheiljedang',
-  'SK하이닉스': 'https://www.skhynix.com/kr/',
-  'Amazon': 'https://www.amazon.com/',
-  'Google': 'https://www.google.com/',
-  'Microsoft': 'https://www.microsoft.com/',
-  'Apple': 'https://www.apple.com/',
-  'Meta': 'https://about.meta.com/',
-  'KB국민은행': 'https://www.kbstar.com/',
-  '신한은행': 'https://www.shinhan.com/',
-  '하나은행': 'https://www.kebhana.com/',
-  '우리은행': 'https://www.wooribank.com/',
-  'NH농협은행': 'https://www.nonghyup.com/',
-  '한국전력공사': 'https://home.kepco.co.kr/',
+  '삼성전자': 'https://www.samsungcareers.com/',
+  '현대자동차': 'https://talent.hyundai.com/',
+  'LG전자': 'https://careers.lg.com/',
+  'CJ제일제당': 'https://recruit.cj.net/',
+  'SK하이닉스': 'https://talent.skhynix.com/hub/ko/home',
+  'Amazon': 'https://www.amazon.jobs/',
+  'Google': 'https://careers.google.com/',
+  'Microsoft': 'https://careers.microsoft.com/',
+  'Apple': 'https://jobs.apple.com/',
+  'Meta': 'https://www.metacareers.com/',
+  'KB국민은행': 'https://jobs.kbstar.com/',
+  '신한은행': 'https://shinhan.recruiter.co.kr/career/home',
+  '하나은행': 'https://hanabank.recruiter.co.kr/career/home',
+  '우리은행': 'https://spot.wooribank.com/pot/Dream?withyou=BPHRR0001',
+  'NH농협은행': 'https://www.nhbank.com/nhmn/KO_NHMN_07.do',
+  '한국전력공사': 'https://recruit.kepco.co.kr/',
   '한국토지주택공사': 'https://www.lh.or.kr/',
-  '인천국제공항공사': 'https://www.airport.kr/',
-  '한국수자원공사': 'https://www.kwater.or.kr/',
-  '한국철도공사': 'https://info.korail.com/',
+  '인천국제공항공사': 'https://www.airport.kr/co_ko/849/subview.do',
+  '한국수자원공사': 'https://www.kwater.or.kr/recr/sub01/recruitPage.do',
+  '한국철도공사': 'https://info.korail.com/info/selectBbsNttList.do?bbsNo=198&key=733',
 };
 
 const JOB_COMPANY_PRIORITY = {
@@ -1886,7 +1886,7 @@ function renderCompanyAddModal() {
           <button class="primary-button compact" type="button" data-company-modal-confirm>그대로 할게요</button>
         </div>
         ${COMPANY_HOMEPAGES[name] ? `
-          <a class="modal-link-button" href="${escapeHtml(COMPANY_HOMEPAGES[name])}" target="_blank" rel="noopener noreferrer">기업 공식 홈페이지 바로가기 →</a>
+          <a class="modal-link-button" href="${escapeHtml(COMPANY_HOMEPAGES[name])}" target="_blank" rel="noopener noreferrer">기업 공식 채용 사이트 바로가기 →</a>
         ` : ''}
       </div>
     </div>
