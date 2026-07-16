@@ -59,9 +59,16 @@ a{
   justify-content:space-between;
   gap:16px;
   margin:0 auto;
-  padding:0 max(28px, calc((100vw - 1200px) / 2));
   min-height:64px;
   border-bottom:1px solid var(--border);
+}
+
+.landing-header{
+  padding:0 max(24px, calc((100vw - 1500px) / 2));
+}
+
+.calendar-header{
+  padding:0 max(28px, calc((100vw - 1200px) / 2));
 }
 
 .logo{
@@ -1482,6 +1489,41 @@ aside{
   font-size:13px;
 }
 
+.season-picker-row{
+  margin:0 0 14px;
+}
+
+.season-picker-label{
+  margin:0 0 8px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:600;
+}
+
+.season-picker-options{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.season-picker-option{
+  padding:6px 12px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:#fff;
+  color:var(--ink);
+  font-size:12px;
+  cursor:pointer;
+}
+
+.season-picker-option:hover,
+.season-picker-option.selected{
+  border-color:#b8d5fa;
+  background:var(--accent-soft);
+  color:var(--accent-strong);
+  font-weight:700;
+}
+
 .modal-summary-list{
   display:grid;
   gap:8px;
@@ -1525,6 +1567,20 @@ aside{
   margin:0;
   padding:0 14px;
   gap:0;
+}
+
+.modal-link-button{
+  display:block;
+  margin-top:12px;
+  text-align:center;
+  color:var(--accent);
+  font-size:12px;
+  font-weight:600;
+  text-decoration:none;
+}
+
+.modal-link-button:hover{
+  text-decoration:underline;
 }
 
 .modal-panel .company-manual-form{

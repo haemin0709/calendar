@@ -157,6 +157,29 @@ const COMPANY_RECOMMENDATIONS = {
   ],
 };
 
+const COMPANY_HOMEPAGES = {
+  '삼성전자': 'https://www.samsung.com/sec/',
+  '현대자동차': 'https://www.hyundai.com/kr/ko',
+  'LG전자': 'https://www.lge.co.kr/',
+  'CJ제일제당': 'https://www.cj.co.kr/kr/main/cj-cheiljedang',
+  'SK하이닉스': 'https://www.skhynix.com/kr/',
+  'Amazon': 'https://www.amazon.com/',
+  'Google': 'https://www.google.com/',
+  'Microsoft': 'https://www.microsoft.com/',
+  'Apple': 'https://www.apple.com/',
+  'Meta': 'https://about.meta.com/',
+  'KB국민은행': 'https://www.kbstar.com/',
+  '신한은행': 'https://www.shinhan.com/',
+  '하나은행': 'https://www.kebhana.com/',
+  '우리은행': 'https://www.wooribank.com/',
+  'NH농협은행': 'https://www.nonghyup.com/',
+  '한국전력공사': 'https://home.kepco.co.kr/',
+  '한국토지주택공사': 'https://www.lh.or.kr/',
+  '인천국제공항공사': 'https://www.airport.kr/',
+  '한국수자원공사': 'https://www.kwater.or.kr/',
+  '한국철도공사': 'https://info.korail.com/',
+};
+
 const JOB_COMPANY_PRIORITY = {
   '서비스기획': ['삼성전자', '현대자동차', 'LG전자', 'Google', 'Microsoft'],
   '마케팅': ['LG전자', 'CJ제일제당', 'Google', 'Meta', 'Amazon'],
@@ -212,7 +235,7 @@ const today = new Date();
 const state = {
   track: '',
   job: '',
-  season: '',
+  seasons: [],
 };
 const layerState = {
   recruitment: false,
@@ -353,8 +376,8 @@ function formatRange(start, end) {
   return `${formatKoreanDate(start)} ~ ${formatKoreanDate(end)}`;
 }
 
-function targetSeasonDate() {
-  const parsed = parseSeason(state.season);
+function targetSeasonDateFor(seasonLabel) {
+  const parsed = parseSeason(seasonLabel);
   if (!parsed) return addMonths(startOfMonth(today), 2);
 
   // 실제 공채 서류 마감 기준: 하반기는 9월 중순. 아래에서 -21일로 역산해 마감일을 구하므로
@@ -365,6 +388,23 @@ function targetSeasonDate() {
 
   if (target < startOfMonth(today)) return addMonths(startOfMonth(today), 2);
   return target;
+}
+
+function getSelectedSeasonDates() {
+  return state.seasons
+    .map(season => ({ season, date: targetSeasonDateFor(season) }))
+    .sort((left, right) => left.date - right.date);
+}
+
+function targetSeasonDate(seasonLabel) {
+  if (seasonLabel) return targetSeasonDateFor(seasonLabel);
+  const dates = getSelectedSeasonDates();
+  return dates.length ? dates[0].date : addMonths(startOfMonth(today), 2);
+}
+
+function getCalendarRangeEndDate() {
+  const dates = getSelectedSeasonDates();
+  return dates.length ? dates[dates.length - 1].date : addMonths(startOfMonth(today), 2);
 }
 
 function monthRange(start, end) {
@@ -691,7 +731,7 @@ function getCompanyRecommendations() {
   });
 }
 
-function buildCompanyEvent(companyName, index, source = 'recommendation', manualDates = null) {
+function buildCompanyEvent(companyName, index, source = 'recommendation', manualDates = null, seasonLabel = null) {
   const order = index + 1;
   let applicationStart;
   let applicationEnd;
@@ -708,7 +748,7 @@ function buildCompanyEvent(companyName, index, source = 'recommendation', manual
     aptitudeStart = manualDates.aptitudeStart;
     aptitudeEnd = manualDates.aptitudeEnd;
   } else {
-    const deadline = addDays(targetSeasonDate(), -21);
+    const deadline = addDays(targetSeasonDate(seasonLabel), -21);
     const offset = hashCode(companyName) % 16;
     applicationStart = deadline;
     applicationEnd = deadline;
@@ -741,15 +781,15 @@ function buildCompanyEvent(companyName, index, source = 'recommendation', manual
   };
 }
 
-function getCompanySchedulePreview(companyName) {
+function getCompanySchedulePreview(companyName, seasonLabel) {
   const recommendations = getCompanyRecommendations();
   const found = recommendations.find(item => item.name === companyName);
   const index = found ? recommendations.indexOf(found) : 0;
-  return buildCompanyEvent(companyName, index, 'recommendation').companySchedule;
+  return buildCompanyEvent(companyName, index, 'recommendation', null, seasonLabel).companySchedule;
 }
 
 function getCompanyEvents() {
-  const searchEvents = customCompanyEvents.map(item => buildCompanyEvent(item.name, item.order || 0, item.manualDates ? 'manual' : 'search', item.manualDates || null));
+  const searchEvents = customCompanyEvents.map(item => buildCompanyEvent(item.name, item.order || 0, item.manualDates ? 'manual' : 'search', item.manualDates || null, item.season || null));
   const unique = new Map();
 
   searchEvents.forEach(event => {
@@ -1055,10 +1095,10 @@ function renderLanding() {
           <div class="season-field">
             <span>목표 시즌</span>
             <div class="season-options">
-              ${getSeasonOptions().map(season => `<button class="season ${season === state.season ? 'selected' : ''}" data-season="${season}" type="button">${season}</button>`).join('')}
+              ${getSeasonOptions().map(season => `<button class="season ${state.seasons.includes(season) ? 'selected' : ''}" data-season="${season}" type="button">${season}</button>`).join('')}
             </div>
           </div>
-          <button id="create-calendar" class="primary-button" ${state.track && state.job && state.season ? '' : 'disabled'}>
+          <button id="create-calendar" class="primary-button" ${state.track && state.job && state.seasons.length ? '' : 'disabled'}>
             취뽀 캘린더 만들기 <span>→</span>
           </button>
         </div>
@@ -1087,7 +1127,13 @@ function renderLanding() {
 
   document.querySelectorAll('.season').forEach(button => {
     button.addEventListener('click', () => {
-      state.season = button.dataset.season;
+      const season = button.dataset.season;
+      const index = state.seasons.indexOf(season);
+      if (index >= 0) {
+        state.seasons.splice(index, 1);
+      } else {
+        state.seasons.push(season);
+      }
       renderLanding();
     });
   });
@@ -1144,13 +1190,13 @@ function renderMonthView(monthDate, events, monthIndex, monthCount) {
 }
 
 function renderCalendar() {
-  if (!state.track || !state.job || !state.season) {
+  if (!state.track || !state.job || !state.seasons.length) {
     location.hash = '#/';
     return;
   }
 
   const events = getAllEvents();
-  const monthDates = monthRange(today, targetSeasonDate());
+  const monthDates = monthRange(today, getCalendarRangeEndDate());
   calendarViewIndex = clampCalendarViewIndex(monthDates.length);
   const visibleMonth = monthDates[calendarViewIndex];
 
@@ -1165,7 +1211,7 @@ function renderCalendar() {
           <span>·</span>
           <b>${escapeHtml(state.job)}</b>
           <span>·</span>
-          <span>${escapeHtml(state.season)}</span>
+          <span>${escapeHtml(state.seasons.join(', '))}</span>
           <button id="edit-goal" type="button">수정</button>
         </div>
       </header>
@@ -1325,11 +1371,17 @@ function renderCalendar() {
       pendingCompanyAddMode = 'preview';
       renderCalendar();
     });
+    companyAddModal.querySelectorAll('[data-company-modal-season]').forEach(button => {
+      button.addEventListener('click', () => {
+        pendingCompanyAdd.season = button.dataset.companyModalSeason;
+        renderCalendar();
+      });
+    });
     companyAddModal.querySelector('[data-company-modal-confirm]')?.addEventListener('click', () => {
-      const name = pendingCompanyAdd.name;
+      const { name, season } = pendingCompanyAdd;
       pendingCompanyAdd = null;
       pendingCompanyAddMode = 'preview';
-      addCompanySchedule(name);
+      addCompanySchedule(name, season);
     });
     companyAddModal.querySelector('#company-add-manual-form')?.addEventListener('submit', event => {
       event.preventDefault();
@@ -1406,7 +1458,7 @@ function renderCalendar() {
     companyLibrarySelect.addEventListener('change', event => {
       const company = event.target.value;
       if (!company) return;
-      pendingCompanyAdd = { name: company };
+      pendingCompanyAdd = { name: company, season: getSelectedSeasonDates()[0]?.season || null };
       pendingCompanyAddMode = 'preview';
       renderCalendar();
     });
@@ -1765,8 +1817,8 @@ function renderCertificateGoalEditor(certName) {
 
 function renderCompanyAddModal() {
   if (!pendingCompanyAdd) return '';
-  const { name } = pendingCompanyAdd;
-  const schedule = getCompanySchedulePreview(name);
+  const { name, season } = pendingCompanyAdd;
+  const schedule = getCompanySchedulePreview(name, season);
 
   if (pendingCompanyAddMode === 'manual') {
     return `
@@ -1814,6 +1866,16 @@ function renderCompanyAddModal() {
           <strong>${escapeHtml(name)} 일정이 이렇게 계산됐어요</strong>
           <button class="modal-close" type="button" data-company-modal-close aria-label="닫기">×</button>
         </div>
+        ${state.seasons.length > 1 ? `
+          <div class="season-picker-row">
+            <p class="season-picker-label">어느 시즌 기준으로 계산할까요?</p>
+            <div class="season-picker-options">
+              ${state.seasons.map(seasonOption => `
+                <button class="season-picker-option ${seasonOption === season ? 'selected' : ''}" type="button" data-company-modal-season="${escapeHtml(seasonOption)}">${escapeHtml(seasonOption)}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
         <p class="modal-desc">서류 마감일(${formatKoreanDate(schedule.applicationStart)}) 기준으로 역산했어요.</p>
         <ul class="modal-summary-list">
           <li><span>자소서 준비</span><strong>${formatKoreanDate(schedule.resumeStart)}부터 시작</strong></li>
@@ -1823,6 +1885,9 @@ function renderCompanyAddModal() {
           <button class="secondary-button" type="button" data-company-modal-manual>직접 설정할게요</button>
           <button class="primary-button compact" type="button" data-company-modal-confirm>그대로 할게요</button>
         </div>
+        ${COMPANY_HOMEPAGES[name] ? `
+          <a class="modal-link-button" href="${escapeHtml(COMPANY_HOMEPAGES[name])}" target="_blank" rel="noopener noreferrer">기업 공식 홈페이지 바로가기 →</a>
+        ` : ''}
       </div>
     </div>
   `;
@@ -1895,29 +1960,29 @@ function renderCertificateAddModal() {
   `;
 }
 
-function addCompanySchedule(companyName) {
+function addCompanySchedule(companyName, seasonLabel) {
   if (!companyName) return;
   const recommendations = getCompanyRecommendations();
   const found = recommendations.find(item => item.name === companyName);
   const index = found ? recommendations.indexOf(found) : 0;
   const storedIndex = customCompanyEvents.findIndex(item => item.name === companyName);
   if (storedIndex >= 0) customCompanyEvents.splice(storedIndex, 1);
-  customCompanyEvents.unshift({ name: companyName, order: index });
+  customCompanyEvents.unshift({ name: companyName, order: index, season: seasonLabel || null });
   if (!selectedCompanies.includes(companyName)) {
     selectedCompanies.unshift(companyName);
   }
   layerState.recruitment = true;
   layerState.aptitude = true;
   layerState.resume = true;
-  const monthDates = monthRange(today, targetSeasonDate());
+  const monthDates = monthRange(today, getCalendarRangeEndDate());
   const deadlineMonthIndex = monthDates.findIndex(monthDate => {
-    const deadline = addDays(targetSeasonDate(), -21);
+    const deadline = addDays(targetSeasonDate(seasonLabel), -21);
     return monthDate.getFullYear() === deadline.getFullYear() && monthDate.getMonth() === deadline.getMonth();
   });
   if (deadlineMonthIndex >= 0) {
     calendarViewIndex = deadlineMonthIndex;
   }
-  trackEvent('company_schedule_added', { company: companyName, source: found ? 'recommendation' : 'search' });
+  trackEvent('company_schedule_added', { company: companyName, source: found ? 'recommendation' : 'search', season: seasonLabel || null });
   renderCalendar();
 }
 
@@ -1934,7 +1999,7 @@ function toggleCompanySchedule(companyName) {
   if (selectedCompanies.includes(companyName)) {
     removeCompanySchedule(companyName);
   } else {
-    pendingCompanyAdd = { name: companyName };
+    pendingCompanyAdd = { name: companyName, season: getSelectedSeasonDates()[0]?.season || null };
     pendingCompanyAddMode = 'preview';
     renderCalendar();
   }
